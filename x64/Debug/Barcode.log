@@ -1,22 +1,23 @@
 ﻿  Barcode.cpp
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(76): warning C4244: 'argomento': conversione da 'float' a 'int'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(162): warning C4244: '=': conversione da 'float' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(71): warning C4244: 'argomento': conversione da 'float' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(78): warning C4244: 'argomento': conversione da 'float' a 'int'. Possibile perdita di dati.
 c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(163): warning C4244: '=': conversione da 'float' a 'int'. Possibile perdita di dati.
 c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(164): warning C4244: '=': conversione da 'float' a 'int'. Possibile perdita di dati.
 c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(165): warning C4244: '=': conversione da 'float' a 'int'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(169): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(170): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(174): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(175): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(182): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(183): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(187): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(188): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(199): warning C4244: '=': conversione da 'double' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(224): warning C4244: 'argomento': conversione da 'double' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(246): warning C4244: '=': conversione da 'double' a 'float'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(166): warning C4244: '=': conversione da 'float' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(170): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(171): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(175): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(176): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(183): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(184): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(188): warning C4244: '=': conversione da 'int' a 'float'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(189): warning C4267: '=': conversione da 'size_t' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(200): warning C4244: '=': conversione da 'double' a 'float'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(225): warning C4244: 'argomento': conversione da 'double' a 'float'. Possibile perdita di dati.
 c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(247): warning C4244: '=': conversione da 'double' a 'float'. Possibile perdita di dati.
-c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(255): warning C4244: 'inizializzazione': conversione da 'float' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(248): warning C4244: '=': conversione da 'double' a 'float'. Possibile perdita di dati.
 c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(256): warning C4244: 'inizializzazione': conversione da 'float' a 'int'. Possibile perdita di dati.
 c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(257): warning C4244: 'inizializzazione': conversione da 'float' a 'int'. Possibile perdita di dati.
+c:\users\alessio caporali\desktop\di stefano\barcode\barcode\barcode.cpp(258): warning C4244: 'inizializzazione': conversione da 'float' a 'int'. Possibile perdita di dati.
   Barcode.vcxproj -> C:\Users\Alessio Caporali\Desktop\DI STEFANO\Barcode\x64\Debug\Barcode.exe
