@@ -11,6 +11,7 @@ using namespace std;
 
 // for the selection of the good lines among the set provided by Hough
 #define delta 0.05 
+#define range2 20
 
 void drawing_box(Mat dst, vector<Point> points) {
 
@@ -124,9 +125,9 @@ vector<float> rotation_lines(vector<Vec4i> r_lines, float rotation[], Mat src) {
 
 	return vec;
 }
-Mat rotation_image(Mat src, float angle_rotation) {
+Mat rotation_image(Mat src, float angle_rotation, int verso) {
 
-	angle_rotation = -(angle_rotation * 180) / (CV_PI);
+	angle_rotation = ((angle_rotation * 180) / (CV_PI))*verso;
 	//rotation vector
 	Point2f src_center(src.cols / 2.0F, src.rows / 2.0F);
 	//Point2f src_center(0, 0);
@@ -135,11 +136,11 @@ Mat rotation_image(Mat src, float angle_rotation) {
 	warpAffine(src, dst, rot_mat, src.size());
 	return dst;
 }
-tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
+tuple <vector<Vec4i>, float> barcode_orientation(Mat src, int *orientation) {
 	Mat cdst = src.clone();
 	cvtColor(cdst, cdst, CV_GRAY2RGB);
-	float media = 0, sum = 0, median = 0, angle_rotation = 0;
-	int count = 0;
+	float media = 0, sum = 0, median = 0, angle_rotation = 0, valore, val;
+	int count = 0, counter=0, counter2, differenza=0;
 	bool flag_median = false;
 	vector<Vec4i> lines;
 	vector<Vec4i> r_lines;
@@ -149,11 +150,25 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		Vec4i l = lines[i];
-		if (atan2((l[3] - l[1]), (l[2] - l[0])) > 1.5) flag_median = true; // cambio nella direzione della rotazione PORCATA!
+		if (atan2((l[3] - l[1]), (l[2] - l[0])) > 1.5) {
+			flag_median = true; // cambio nella direzione della rotazione PORCATA!
+		}
 		theta.push_back(abs(atan2((l[3] - l[1]), (l[2] - l[0]))));
+		 if(valore = (atan2((l[3] - l[1]), (l[2] - l[0])))>0) counter++;
+		//cout <<"valore  "<< valore << endl;
 		sum = sum + abs(theta[i]);
 		line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
 	}
+
+	
+	counter2 = lines.size() - counter;
+	differenza = counter - counter2;
+	if (differenza > range2) *orientation = -1;
+	else if (differenza < -range2) *orientation = 1;
+	else if ((-range2 <= differenza) && (differenza <= range2)) *orientation = 0;
+
+	
+
 	theta_backup = theta;
 	sort(theta.begin(), theta.end());
 	median = theta[theta.size() / 2];
@@ -169,6 +184,10 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 			//line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 1, CV_AA);
 		}
 	}
+
+
+
+
 	// bubble sort
 	bool swap = true;
 	while (swap) {
@@ -187,10 +206,13 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 			}
 		}
 	}
+
+
 	vector<Vec4i> barcode_lines;
 	bool gap = true;
 	int max_gap = 80;
-	int result = 0;
+	int result[2] = { 0, 0 };
+	int k = 0;
 	while (gap) {
 
 		gap = false;
@@ -199,40 +221,69 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 			Vec4i l0 = r_lines[i + 1];
 
 			if ((l0[0] - l[0]) > max_gap) {
-				result = i;
+				result[k] = i;
+				k++;
 			}
 		}
 	}
-	if (result != 0) {
-		if (r_lines.size() - result > result)
+
+
+
+	switch (k)
+	{
+	case (0): {
+		for (int i = 0; i < r_lines.size(); i++) {
+			barcode_lines.push_back(r_lines[i]);
+
+		}
+		break;
+	}
+
+	case (1): {
+		if (r_lines.size() - result[0] > result[0])
 		{ //gap sinistra
-			for (int i = result; i <= (r_lines.size() - result); i++) {
+			for (int i = result[0]; i <= (r_lines.size() - result[0]); i++) {
 				barcode_lines.push_back(r_lines[i]);
 			}
 		}
 		else { //gap destra
-			for (int i = 0; i <= result; i++) {
+			for (int i = 0; i <= result[0]; i++) {
 				barcode_lines.push_back(r_lines[i]);
 			}
 		}
+		break;
 	}
-	else {
-		for (int i = 0; i < r_lines.size(); i++) {
+	case (2): {
+		for (int i = result[0] + 1; i <= (result[1]); i++) {
 			barcode_lines.push_back(r_lines[i]);
 		}
+		break;
 	}
-	for (size_t i = 0; i < barcode_lines.size(); i++)
-	{
+
+	}
+
+
+	for (int i = 0; i < barcode_lines.size(); i++) {
 		Vec4i l = barcode_lines[i];
-		//cout << barcode_lines[i] << endl;
 		line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 1, CV_AA);
+
 	}
+
+
+	
 	imshow("lines", cdst);
+
+
+
+
 	//rotation of the image
 	if (flag_median) angle_rotation = median - CV_PI / 2;
 	else angle_rotation = CV_PI / 2 - median;
 	return make_tuple(barcode_lines, angle_rotation);
 }
+
+
+
 int counter_tickness_bars(Mat img, vector<float> px) {
 
 	int distance_x = px[1] - px[0];
