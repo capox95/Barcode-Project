@@ -20,7 +20,8 @@ vector<Vec4i> rotation_lines(vector<Vec4i> r_lines, float angle, Mat src);
 Mat rotation_image(Mat src, float angle_rotation);
 tuple <vector<Vec4i>, float> barcode_orientation(Mat src);
 int counter_tickness_bars(Mat img, vector<float> px);
-vector <Vec4i> gap(vector<Vec4i> r_lines);
+vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap);
 vector<float> corners_detector(vector<Vec4i> r_lines);
+Mat clahe(Mat bgr_image);
 
 #endif
