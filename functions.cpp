@@ -58,6 +58,7 @@ MatND histogram(Mat src) {
 
 Mat binarization(Mat src, int threshold) {
 
+	cvtColor(src, src, CV_BGR2GRAY);
 	for (int i = 0; i < src.rows; i++)
 	{
 		for (int j = 0; j < src.cols; j++)
@@ -151,11 +152,6 @@ vector<float> corners_detector(vector<Vec4i> r_lines) {
 
 
 	vector<float> vec = { corners_x[0], corners_x[1], corners_y[0], corners_y[1] };
-	cout << vec[0] << endl;
-	cout << vec[1] << endl;
-	cout << vec[2] << endl;
-	cout << vec[3] << endl;
-
 	return vec;
 }
 
@@ -236,7 +232,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 
 }
 
-vector <Vec4i> gap(vector<Vec4i> r_lines){
+vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 	
 	// bubble sort
 	bool swap = true;
@@ -260,7 +256,6 @@ vector <Vec4i> gap(vector<Vec4i> r_lines){
 
 	vector<Vec4i> barcode_lines;
 	bool gap = true;
-	int max_gap = 80;
 	int result[2] = { 0, 0 };
 	int k = 0;
 	while (gap) {
@@ -276,11 +271,7 @@ vector <Vec4i> gap(vector<Vec4i> r_lines){
 			}
 		}
 	}
-	cout << "result" << endl;
 
-	cout << result[0] << endl;
-	cout << result[1] << endl;
-	cout << "k " << k << endl;
 
 	switch (k)
 	{
@@ -353,4 +344,33 @@ int counter_tickness_bars(Mat img, vector<float> px) {
 	}
 
 	return result;
+}
+
+
+
+Mat clahe(Mat bgr_image) {
+
+	Mat lab_image;
+	cvtColor(bgr_image, lab_image, CV_BGR2Lab);
+
+	// Extract the L channel
+	vector<Mat> lab_planes(3);
+	split(lab_image, lab_planes);  // now we have the L image in lab_planes[0
+								   // apply the CLAHE algorithm to the L channel
+	Ptr<CLAHE> clahe = createCLAHE();
+	clahe->setClipLimit(4);
+	Mat dst;
+	clahe->apply(lab_planes[0], dst);
+
+	// Merge the the color planes back into an Lab image
+	dst.copyTo(lab_planes[0]);
+	merge(lab_planes, lab_image);
+
+	// convert back to RGB
+	Mat image_clahe;
+	cvtColor(lab_image, image_clahe, CV_Lab2BGR);
+
+	// display the results  (you might also want to see lab_planes[0] before and after).
+	return image_clahe;
+
 }
