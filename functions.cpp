@@ -68,14 +68,20 @@ Mat binarization(Mat src, int threshold) {
 	}
 	return src;
 }
-vector<float> rotation_lines(vector<Vec4i> r_lines, float rotation[], Mat src) {
 
-	float corners_x[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
-	float corners_y[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
-	
-	int x=(int) src.cols/2, y=(int) src.rows/2;
 
-	int i_max = 0, i_min = 0, j_max = 0, j_min = 0;
+vector<Vec4i> rotation_lines(vector<Vec4i> r_lines, float angle, Mat src) {
+
+	cvtColor(src, src, CV_GRAY2RGB);
+
+	float rotation[2];
+	rotation[0] = cos(angle);
+	rotation[1] = sin(angle);
+
+
+
+	int x = (int)src.cols / 2, y = (int)src.rows / 2;
+
 	for (size_t i = 0; i < r_lines.size(); i++) {
 		r_lines[i][0] -= x;
 		r_lines[i][1] -= y;
@@ -90,6 +96,33 @@ vector<float> rotation_lines(vector<Vec4i> r_lines, float rotation[], Mat src) {
 		r_lines[i][2] += x;
 		r_lines[i][3] += y;
 
+
+	}
+
+	/*
+	for (int i = 0; i < r_lines.size(); i++) {
+		Vec4i l = r_lines[i];
+		line(src, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
+		}
+
+	imshow("roated_lines", src);
+
+	*/
+
+	return r_lines;
+
+
+}
+
+vector<float> corners_detector(vector<Vec4i> r_lines) {
+
+	float corners_x[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
+	float corners_y[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
+	int i_max = 0, i_min = 0, j_max = 0, j_min = 0;
+
+
+
+	for (size_t i = 0; i < r_lines.size(); i++) {
 		//i_min e i_max ci definiscono la riga della barra iniziale e finale
 		//calcolo x minore
 		if (r_lines[i][0] < corners_x[0]) {
@@ -125,9 +158,11 @@ vector<float> rotation_lines(vector<Vec4i> r_lines, float rotation[], Mat src) {
 
 	return vec;
 }
-Mat rotation_image(Mat src, float angle_rotation, int verso) {
 
-	angle_rotation = ((angle_rotation * 180) / (CV_PI))*verso;
+
+Mat rotation_image(Mat src, float angle_rotation) {
+
+	angle_rotation = ((angle_rotation * 180) / (CV_PI));
 	//rotation vector
 	Point2f src_center(src.cols / 2.0F, src.rows / 2.0F);
 	//Point2f src_center(0, 0);
@@ -136,43 +171,53 @@ Mat rotation_image(Mat src, float angle_rotation, int verso) {
 	warpAffine(src, dst, rot_mat, src.size());
 	return dst;
 }
-tuple <vector<Vec4i>, float> barcode_orientation(Mat src, int *orientation) {
+
+
+tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	Mat cdst = src.clone();
 	cvtColor(cdst, cdst, CV_GRAY2RGB);
 	float media = 0, sum = 0, median = 0, angle_rotation = 0, valore, val;
-	int count = 0, counter=0, counter2, differenza=0;
+	int count = 0, counter = 0, counter2, differenza = 0, orientation = 0;
 	bool flag_median = false;
 	vector<Vec4i> lines;
 	vector<Vec4i> r_lines;
 	vector<float> theta, theta_backup;
-	int minLenght = src.rows / 10;
+	int minLenght = min((src.rows / 10), (src.cols / 10));
 	HoughLinesP(src, lines, 1, CV_PI / 180, 50, minLenght, 5);
+
+
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		Vec4i l = lines[i];
-		if (atan2((l[3] - l[1]), (l[2] - l[0])) > 1.5) {
-			flag_median = true; // cambio nella direzione della rotazione PORCATA!
-		}
 		theta.push_back(abs(atan2((l[3] - l[1]), (l[2] - l[0]))));
-		 if(valore = (atan2((l[3] - l[1]), (l[2] - l[0])))>0) counter++;
-		//cout <<"valore  "<< valore << endl;
-		sum = sum + abs(theta[i]);
+		if (valore = (atan2((l[3] - l[1]), (l[2] - l[0]))) > 0) counter++;
 		line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
+
 	}
 
-	
+	// verso rotazione
 	counter2 = lines.size() - counter;
 	differenza = counter - counter2;
-	if (differenza > range2) *orientation = -1;
-	else if (differenza < -range2) *orientation = 1;
-	else if ((-range2 <= differenza) && (differenza <= range2)) *orientation = 0;
-
-	
+	if (differenza > range2) orientation = -1; // senso orario
+	else if (differenza < -range2) orientation = 1;
+	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
+	cout << "counter " << counter << endl;
+	cout << "counter2 " << counter2 << endl;
 
 	theta_backup = theta;
+
+	// calcolo mediana
 	sort(theta.begin(), theta.end());
+
 	median = theta[theta.size() / 2];
-	media = sum / count;
+	cout << "mediana " << median << endl;
+
+	angle_rotation = (CV_PI / 2 - abs(median))*(orientation);
+
+
+
+
+
 	//ciclo dopo aver calcolato la mediana per selezionare le righe giuste
 	for (size_t i = 0; i < lines.size(); i++)
 	{
@@ -187,7 +232,12 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, int *orientation) {
 
 
 
+	return make_tuple(r_lines, angle_rotation);
 
+}
+
+vector <Vec4i> gap(vector<Vec4i> r_lines){
+	
 	// bubble sort
 	bool swap = true;
 	while (swap) {
@@ -226,8 +276,11 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, int *orientation) {
 			}
 		}
 	}
+	cout << "result" << endl;
 
-
+	cout << result[0] << endl;
+	cout << result[1] << endl;
+	cout << "k " << k << endl;
 
 	switch (k)
 	{
@@ -262,26 +315,9 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, int *orientation) {
 
 	}
 
-
-	for (int i = 0; i < barcode_lines.size(); i++) {
-		Vec4i l = barcode_lines[i];
-		line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 1, CV_AA);
-
-	}
-
-
-	
-	imshow("lines", cdst);
-
-
-
-
-	//rotation of the image
-	if (flag_median) angle_rotation = median - CV_PI / 2;
-	else angle_rotation = CV_PI / 2 - median;
-	return make_tuple(barcode_lines, angle_rotation);
+		
+	return barcode_lines;	
 }
-
 
 
 int counter_tickness_bars(Mat img, vector<float> px) {
