@@ -18,17 +18,16 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("data/UPC#03.bmp", 0);
+	Mat src = imread("data/UPC#01.bmp", 1);
 	imshow("src", src);
+
+	//src = clahe(src);
 
 	// EDGE DETECTION
 	Mat dst, cdst, dst2;
 	Canny(src, dst, 50, 180, 3, true);
-	cvtColor(dst, cdst, CV_GRAY2BGR);
+	//cvtColor(dst, cdst, CV_GRAY2BGR);
 	GaussianBlur(dst, dst, Size(3, 3), 0, 0, BORDER_DEFAULT);
-
-
-
 
 
 	// BARCODE ORIENTATION VIA HOUGH TRANSFORMS
@@ -52,7 +51,7 @@ int main(int argc, char** argv)
 	tie(r_lines2, angle_rotation) = barcode_orientation(edges);
 
 	
-	vector <Vec4i> barcode_lines = gap(r_lines2);
+	vector <Vec4i> barcode_lines = gap(r_lines2, 50);
 	vector <float> px = corners_detector(barcode_lines);
 
 	// BINARIZATION OF THE IMAGE
@@ -77,6 +76,7 @@ int main(int argc, char** argv)
 	waitKey();
 	return 0;
 }
+
 
 
 
