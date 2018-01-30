@@ -374,3 +374,75 @@ Mat clahe(Mat bgr_image) {
 	return image_clahe;
 
 }
+
+int clahe_detector(Mat src) {
+
+	cvtColor(src, src, CV_RGB2GRAY);
+
+	int threshold = 0;
+
+	int histSize = 256;    // bin size
+	float range[] = { 0, 255 };
+	const float *ranges[] = { range };
+
+
+	Mat Hist = Mat::zeros(1, 256, CV_32F); // size=256
+	
+	calcHist(&src, 1, 0, Mat(), Hist, 1, &histSize, ranges, true, false);
+	
+	//GaussianBlur(Hist, Hist, Size(1, 25), 0, 8);
+
+
+
+	double prob[256];
+	double cdf[256];
+
+	for (int i = 0; i < 256; i++) {
+		cdf[i] = 0;
+	}
+
+
+
+	for (int i = 0; i < 256; i++) {
+		prob[i] = Hist.at<float>(i)/ double(src.rows * src.cols);
+		cdf[i] = cdf[i - 1] + prob[i];
+
+		cout <<  i << " " << prob[i] << endl;
+		
+	}
+	cdf[0] = prob[0];
+
+	for (int i = 1; i < 256; i++) {
+		cdf[i] = cdf[i - 1] + prob[i];
+		cout << i << " " << cdf[i] << endl;
+
+
+	}
+
+
+	if (cdf[128] > 0.9) return 1;
+	else return 0;
+
+}
+
+
+void plot_histogram(Mat Hist, int histSize) {
+
+	// Plot the histogram
+	int hist_w = 512; int hist_h = 400;
+	int bin_w = cvRound((double)hist_w / histSize);
+
+	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
+	normalize(Hist, Hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
+
+	for (int i = 1; i < histSize; i++)
+	{
+		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(Hist.at<float>(i - 1))),
+			Point(bin_w*(i), hist_h - cvRound(Hist.at<float>(i))),
+			Scalar(255, 0, 0), 2, 8, 0);
+	}
+
+	namedWindow("Result", 1);    imshow("Result", histImage);
+}
+
+
