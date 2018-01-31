@@ -10,7 +10,7 @@ using namespace cv;
 using namespace std;
 
 // for the selection of the good lines among the set provided by Hough
-#define delta 0.05 
+#define delta 0.02 
 #define range2 20
 
 void drawing_box(Mat dst, vector<Point> points) {
@@ -21,108 +21,13 @@ void drawing_box(Mat dst, vector<Point> points) {
 	line(dst, points[3], points[0], Scalar(7, 254, 47), 3, CV_AA);
 }
 
-MatND histogram(Mat src) {
 
-	// Initialize parameters
-	int histSize = 256;    // bin size
-	float range[] = { 0, 255 };
-	const float *ranges[] = { range };
-
-	// Calculate histogram
-	MatND hist;
-	calcHist(&src, 1, 0, Mat(), hist, 1, &histSize, ranges, true, false);
-
-	/*
-	// Show the calculated histogram in command window
-	double total;
-	total = src.rows * src.cols;
-	for (int h = 0; h < histSize; h++)
-	{
-	float binVal = hist.at<float>(h);
-	//cout << " " << binVal;
-	}
-	// Plot the histogram
-	int hist_w = 512; int hist_h = 400;
-	int bin_w = cvRound((double)hist_w / histSize);
-	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
-	normalize(hist, hist, 0, histImage.rows, NORM_MINMAX, -1, Mat());
-	for (int i = 1; i < histSize; i++)
-	{
-	line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(hist.at<float>(i - 1))),
-	Point(bin_w*(i), hist_h - cvRound(hist.at<float>(i))),
-	Scalar(255, 0, 0), 2, 8, 0);
-	}
-	*/
-	return hist;
-}
-
-Mat binarization(Mat src, int threshold) {
-
-	cvtColor(src, src, CV_BGR2GRAY);
-	for (int i = 0; i < src.rows; i++)
-	{
-		for (int j = 0; j < src.cols; j++)
-		{
-			if (src.at<uchar>(i, j) <= threshold)  src.at<uchar>(i, j) = 0;
-			else src.at<uchar>(i, j) = 255;
-		}
-	}
-	return src;
-}
-
-
-vector<Vec4i> rotation_lines(vector<Vec4i> r_lines, float angle, Mat src) {
-
-	cvtColor(src, src, CV_GRAY2RGB);
-
-	float rotation[2];
-	rotation[0] = cos(angle);
-	rotation[1] = sin(angle);
-
-
-
-	int x = (int)src.cols / 2, y = (int)src.rows / 2;
-
-	for (size_t i = 0; i < r_lines.size(); i++) {
-		r_lines[i][0] -= x;
-		r_lines[i][1] -= y;
-		r_lines[i][2] -= x;
-		r_lines[i][3] -= y;
-		r_lines[i][0] = (r_lines[i][0] * rotation[0] - r_lines[i][1] * rotation[1]);
-		r_lines[i][1] = (r_lines[i][0] * rotation[1] + r_lines[i][1] * rotation[0]);
-		r_lines[i][2] = (r_lines[i][2] * rotation[0] - r_lines[i][3] * rotation[1]);
-		r_lines[i][3] = (r_lines[i][2] * rotation[1] + r_lines[i][3] * rotation[0]);
-		r_lines[i][0] += x;
-		r_lines[i][1] += y;
-		r_lines[i][2] += x;
-		r_lines[i][3] += y;
-
-
-	}
-
-	/*
-	for (int i = 0; i < r_lines.size(); i++) {
-		Vec4i l = r_lines[i];
-		line(src, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
-		}
-
-	imshow("roated_lines", src);
-
-	*/
-
-	return r_lines;
-
-
-}
-
-vector<float> corners_detector(vector<Vec4i> r_lines) {
+vector<float> FirstLastDetector(vector<Vec4i> r_lines) {
 
 	float corners_x[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
 	float corners_y[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
 	int i_max = 0, i_min = 0, j_max = 0, j_min = 0;
-
-
-
+	
 	for (size_t i = 0; i < r_lines.size(); i++) {
 		//i_min e i_max ci definiscono la riga della barra iniziale e finale
 		//calcolo x minore
@@ -135,7 +40,6 @@ vector<float> corners_detector(vector<Vec4i> r_lines) {
 			corners_x[1] = r_lines[i][0];
 			i_max = i;
 		}
-		//line(destination, Point(r_lines[i][0], r_lines[i][1]), Point(r_lines[i][2], r_lines[i][3]), Scalar(0, 0, 255), 1, CV_AA);
 	}
 	for (size_t i = 0; i < r_lines.size(); i++) {
 		//calcolo y minore
@@ -149,8 +53,7 @@ vector<float> corners_detector(vector<Vec4i> r_lines) {
 			j_max = i;
 		}
 	}
-
-
+	
 	vector<float> vec = { corners_x[0], corners_x[1], corners_y[0], corners_y[1] };
 	return vec;
 }
@@ -179,21 +82,25 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	vector<Vec4i> r_lines;
 	vector<float> theta, theta_backup;
 	int minLenght = min((src.rows / 10), (src.cols / 10));
-	HoughLinesP(src, lines, 1, CV_PI / 180, 50, minLenght, 5);
+	cout << "minimum lenght " << minLenght << endl;
+	HoughLinesP(src, lines, 1, CV_PI / 180, 30, minLenght, 5);
 
 
 	for (size_t i = 0; i < lines.size(); i++)
-	{
+	{	
 		Vec4i l = lines[i];
 		theta.push_back(abs(atan2((l[3] - l[1]), (l[2] - l[0]))));
 		if (valore = (atan2((l[3] - l[1]), (l[2] - l[0]))) > 0) counter++;
-		line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
+		//line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
 
 	}
+
+
 
 	// verso rotazione
 	counter2 = lines.size() - counter;
 	differenza = counter - counter2;
+	
 	if (differenza > range2) orientation = -1; // senso orario
 	else if (differenza < -range2) orientation = 1;
 	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
@@ -204,14 +111,9 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 
 	// calcolo mediana
 	sort(theta.begin(), theta.end());
-
 	median = theta[theta.size() / 2];
 	cout << "mediana " << median << endl;
-
-	angle_rotation = (CV_PI / 2 - abs(median))*(orientation);
-
-
-
+	cout << "verso di rotazione:  " << orientation << endl;
 
 
 	//ciclo dopo aver calcolato la mediana per selezionare le righe giuste
@@ -222,10 +124,17 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 		{
 			//cout << theta_backup[i] << endl;
 			r_lines.push_back(Vec4i(l[0], l[1], l[2], l[3]));
-			//line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 1, CV_AA);
+			sum = sum + theta_backup[i];
+			line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 1, CV_AA);
 		}
 	}
 
+	media = sum / r_lines.size();
+	cout << "media theta " << media << endl;
+	angle_rotation = (CV_PI / 2 - abs(media))*(orientation);
+
+
+	//imshow("cdst", cdst);
 
 
 	return make_tuple(r_lines, angle_rotation);
@@ -253,6 +162,14 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 		}
 	}
 
+	for (int i = 0; i < r_lines.size(); i++) {
+		cout << r_lines[i] << endl;
+
+	}
+
+
+
+
 
 	vector<Vec4i> barcode_lines;
 	bool gap = true;
@@ -271,8 +188,7 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 			}
 		}
 	}
-
-
+	cout << " numero di gap:  " << k << endl;
 	switch (k)
 	{
 	case (0): {
@@ -284,9 +200,10 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 	}
 
 	case (1): {
+
 		if (r_lines.size() - result[0] > result[0])
 		{ //gap sinistra
-			for (int i = result[0]; i <= (r_lines.size() - result[0]); i++) {
+			for (int i = result[0]+1; i < (r_lines.size() - result[0]); i++) {
 				barcode_lines.push_back(r_lines[i]);
 			}
 		}
@@ -298,7 +215,7 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 		break;
 	}
 	case (2): {
-		for (int i = result[0] + 1; i <= (result[1]); i++) {
+		for (int i = result[0]+1; i <= (result[1]); i++) {
 			barcode_lines.push_back(r_lines[i]);
 		}
 		break;
@@ -375,6 +292,7 @@ Mat clahe(Mat bgr_image) {
 
 }
 
+
 int clahe_detector(Mat src) {
 
 	cvtColor(src, src, CV_RGB2GRAY);
@@ -387,41 +305,38 @@ int clahe_detector(Mat src) {
 
 
 	Mat Hist = Mat::zeros(1, 256, CV_32F); // size=256
-	
-	calcHist(&src, 1, 0, Mat(), Hist, 1, &histSize, ranges, true, false);
-	
-	//GaussianBlur(Hist, Hist, Size(1, 25), 0, 8);
+
+calcHist(&src, 1, 0, Mat(), Hist, 1, &histSize, ranges, true, false);
+
+//GaussianBlur(Hist, Hist, Size(1, 25), 0, 8);
 
 
 
-	double prob[256];
-	double cdf[256];
+double prob[256];
+double cdf[256];
 
-	for (int i = 0; i < 256; i++) {
-		cdf[i] = 0;
-	}
-
-
-
-	for (int i = 0; i < 256; i++) {
-		prob[i] = Hist.at<float>(i)/ double(src.rows * src.cols);
-		cdf[i] = cdf[i - 1] + prob[i];
-
-		cout <<  i << " " << prob[i] << endl;
-		
-	}
-	cdf[0] = prob[0];
-
-	for (int i = 1; i < 256; i++) {
-		cdf[i] = cdf[i - 1] + prob[i];
-		cout << i << " " << cdf[i] << endl;
+for (int i = 0; i < 256; i++) {
+	cdf[i] = 0;
+}
 
 
-	}
+
+for (int i = 0; i < 256; i++) {
+	prob[i] = Hist.at<float>(i) / double(src.rows * src.cols);
+	cdf[i] = cdf[i - 1] + prob[i];
+
+}
+cdf[0] = prob[0];
+
+for (int i = 1; i < 256; i++) {
+	cdf[i] = cdf[i - 1] + prob[i];
 
 
-	if (cdf[128] > 0.9) return 1;
-	else return 0;
+}
+
+
+if (cdf[128] > 0.9) return 1;
+else return 0;
 
 }
 
@@ -446,3 +361,150 @@ void plot_histogram(Mat Hist, int histSize) {
 }
 
 
+vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, int max_vertical_gap) {
+
+	// bubble sort per ordinare r2_line rispetto all y
+	bool swap = true;
+	while (swap) {
+		swap = false;
+		for (int i = 0; i < r2_lines.size() - 1; i++) {
+			if (r2_lines[i][1] > r2_lines[i + 1][1]) {
+				//cout << r_lines[i] << endl;
+				//cout << "i+1 vecchio" << r_lines[i + 1] << endl;
+				Vec4i j = r2_lines[i];
+				r2_lines[i] = r2_lines[i + 1];
+				r2_lines[i + 1] = j;
+
+				//cout << r_lines[i] << endl;
+				//cout << "i+1" << r_lines[i + 1] << endl;
+				swap = true;
+			}
+		}
+	}
+	vector<Vec4i> barcode_lines;
+	bool gap = true;
+	int result = 0;
+	int k = 0;
+	while (gap) {
+
+		gap = false;
+		for (int i = 0; i < r2_lines.size() - 1; i++) {
+			Vec4i l = r2_lines[i];
+			Vec4i l0 = r2_lines[i + 1];
+
+			if ((l0[1] - l[1]) > max_vertical_gap) {
+				result = i;
+				k++;
+			}
+		}
+	}
+	cout << " numero di gap verticali trovati:  " << k << endl;
+	for (int s = result+1; s < r2_lines.size(); s++){
+		barcode_lines.push_back(r2_lines[s]);
+}
+	return barcode_lines;
+}
+
+
+vector<float> Harris(Mat src, vector<Point> roi, int *height) {
+	Point corner = roi[0];
+	int h = roi[1].y - roi[3].y;
+	int x = roi[2].x - roi[0].x;
+	Rect myroi(corner.x, corner.y, x, h);
+	Mat crop_image = src(myroi);
+	Mat crop_bk = crop_image.clone();
+	cornerHarris(crop_image, crop_image, 4, 5, 0.05, BORDER_DEFAULT);
+	Mat dst_norm, dst_norm_scaled;
+	normalize(crop_image, dst_norm, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
+	convertScaleAbs(dst_norm, dst_norm_scaled);
+	
+	//imshow("destination", crop_image);
+
+	vector<Point> corners;
+	/// Drawing a circle around corners
+	for (int j = 0; j < dst_norm.rows; j++)
+	{
+		for (int i = 0; i < dst_norm.cols; i++)
+		{	
+			if ((int)dst_norm.at<float>(j, i) > 127)
+			{	
+				circle(dst_norm_scaled, Point(i, j), 5, Scalar(0), 2, 8, 0);
+				corners.push_back(Point(i, j));
+
+			}
+		}
+	}
+	//cornerSubPix(crop_image, corners, Size(11, 11), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER , 30, 0.1));
+	cout << " number corners " << corners.size() << endl;
+	//imshow("crop", crop_image);
+	imshow("crop", dst_norm_scaled);
+	vector<Point> top, bottom;
+
+	cvtColor(crop_bk, crop_bk, CV_GRAY2RGB);
+	for (int i = 0; i < corners.size(); i++) {
+
+		if (corners[i].y < crop_bk.rows / 5) {
+			top.push_back(corners[i]);
+			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
+		}
+		else if (corners[i].y > 4*crop_bk.rows / 5) {
+			bottom.push_back(corners[i]);
+			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
+
+		}
+	}
+
+
+	vector<Point> result_top, result_bot;
+	for (int i = 0; i < top.size(); i++) {
+		for (int j = 0; j < bottom.size(); j++) {
+			if ((bottom[j].x == top[i].x )) {
+				result_top.push_back(top[i]);
+				result_bot.push_back(bottom[j]);
+				circle(crop_bk, Point(top[i]), 2, Scalar(0, 0, 255), 1);
+				circle(crop_bk, Point(bottom[j]), 2, Scalar(0, 0, 255), 1);
+			}
+		}
+	}
+
+
+	int min = src.rows;
+	int riga = 0;
+	for (int i = 0; i < result_top.size(); i++) {
+		int diff = result_bot[i].y-result_top[i].y;
+		if (diff < min) {
+			min = diff;
+			riga = i;
+		}
+	}
+	line(crop_bk, result_top[riga], result_bot[riga], Scalar(0, 255, 0), 3, CV_AA);
+
+	int bot_y_min = src.rows;
+	int top_y_min = 0;
+	for (int i = 0; i < result_bot.size(); i++) {
+		if (result_bot[i].y < bot_y_min) bot_y_min = result_bot[i].y;
+		if (result_top[i].y > top_y_min) top_y_min = result_top[i].y;
+	}
+
+	int bot_x_min = src.cols;
+	int top_x_min = 0;
+	for (int i = 0; i < result_bot.size(); i++) {
+		if (result_bot[i].x < bot_x_min) bot_x_min = result_bot[i].x;
+		if (result_top[i].x > top_x_min) top_x_min = result_top[i].x;
+	}
+
+	int lost = 0;
+	*height = min;
+
+
+	vector<float> result;
+	result.push_back(top_y_min+corner.y);
+	result.push_back(bot_y_min+corner.y);
+
+
+
+
+	imshow("rotated barcode corners", crop_bk);
+
+	return result;
+}
