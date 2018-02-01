@@ -506,6 +506,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 
 	// COUNTER NUMERO DI EDGES
 	Mat working = crop_images[5];
+	cvtColor(working, working, CV_RGB2GRAY);
 	Mat edges;
 	Canny(working, edges, 50, 150, 3, true);
 	int count_edges = 0;
@@ -545,7 +546,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 
 	//CALCOLO PARAMETRI
 
-	float Rmin=0, Rmax=0, ECmin=0, symbol_contrast=0, modulation=0, ERNman=0;
+	float Rmin = 0, Rmax = 0, ECmin = 255, symbol_contrast = 0, modulation = 0, ERNman = 0;
 	float max = 0, min = 255;
 	for (int i = 0; i < scan_profile.cols; i++) {
 		float temp = scan_profile.at<float>(i);
@@ -559,33 +560,117 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	cout << "Rmax " << Rmax << endl;
 	cout << "Rmin " << Rmin << endl;
 
-
-	cvtColor(src, src, CV_RGB2GRAY);
-
-	double th = threshold(src, src, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-
-
-
-
-	double threshold = th;
-	cout << "threshold scan profile " << threshold << endl;
+	int threshold = (Rmax - Rmin) / 2;
+	//cout << "threshold scan profile " << threshold << endl;
 
 	//ECMIN
 	vector<int> cross;
 	for (int i = 1; i < scan_profile.cols; i++) {
 		float temp = scan_profile.at<float>(i);
 		float temp0 = scan_profile.at<float>(i-1);
-		cout << " valore  " << temp << endl;
 		if (((temp >= threshold)&& (temp0 < threshold)) || ((temp <= threshold) && (temp0 > threshold))) {
 			cross.push_back(i);
-			cout << "i" << i << endl;
-			circle(working, Point(i,working.rows/2), 1, Scalar(0, 0, 255), 1);
-
-
+			//circle(working, Point(i,working.rows/2), 1, Scalar(0, 0, 255), 1);
 		}
+	}
 
+	vector <float> estremi, local_estremi;
+	bool flag; // true se il primo è un massimo
+	
+	if ((scan_profile.at<float>(cross[0])) < threshold) { // cerchiamo un massimo
+		int tp = 0;					
+		flag = true;
+		for (int i = 0; i < cross[0]; i++) {
+			if (scan_profile.at<float>(i) > tp) {
+				tp = scan_profile.at<float>(i);
+			}
+		}
+		estremi.push_back(tp);
 
 	}
+	else {																 // cerchiamo un minimo
+		int tp = 255;
+		flag = false;
+		for (int i = 0; i < cross[0]; i++) {
+			if (scan_profile.at<float>(i) < tp) {
+				tp = scan_profile.at<float>(i);
+			}
+		}
+		estremi.push_back(tp);
+	}
+
+
+	cout << estremi[0] << endl;
+
+
+	for (int i = 0; i < cross.size() - 1; i++) {
+		int t_max = 0, t_min = 255;
+		for (int j = cross[i]; j < cross[i + 1]; j++) {
+			if (flag) {
+				if (scan_profile.at<float>(j) < t_min) {
+					t_min = scan_profile.at<float>(j);
+				}
+			}
+			else {
+				if (scan_profile.at<float>(j) > t_max) {
+					t_max = scan_profile.at<float>(j);
+					}
+			}
+		}
+		if (flag) estremi.push_back(t_min);
+		else estremi.push_back(t_max);
+		flag = !flag;
+	}
+	
+	/*
+	//ultimo elemento
+	if(flag){
+		int tp = 0;
+			for (int i = cross[cross.size()-1]; i < w; i++) {
+				if (scan_profile.at<float>(i) > tp) {
+					tp = scan_profile.at<float>(i);
+					cout << scan_profile.at<float>(i) << endl;
+				}
+			}
+			estremi.push_back(scan_profile.at<float>(tp));
+
+	}
+	else {																 // cerchiamo un minimo
+		int tp = 255;
+		for (int i = cross[cross.size()-1]; i < w; i++) {
+				if (scan_profile.at<float>(i) < tp) {
+					tp = scan_profile.at<float>(i);
+				}
+			}
+		estremi.push_back(scan_profile.at<float>(tp));
+
+	}
+	*/
+
+	for (int i = 0; i < estremi.size()-1; i++) {
+		int x = abs(estremi[i] - estremi[i + 1]);
+		if (x < ECmin) ECmin = x;
+
+	}
+	cout << "ECmin " << ECmin << endl;
+
+
+	//SYMBOL CONTRAST
+	symbol_contrast = ((Rmax - Rmin)/255)*100;
+	cout << "Symbol Constrast " << symbol_contrast << endl;
+
+	//MODULATION
+	modulation = ECmin / (Rmax-Rmin);
+	cout << "Modulation " << modulation << endl;
+
+
+
+
+
+
+
+
+
 
 
 
