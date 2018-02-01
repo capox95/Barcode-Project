@@ -13,27 +13,14 @@
 using namespace cv;
 using namespace std;
 
-//EAN-UPC-DECODABILITY IMGB.bmp
-//UPC#11.bmp
-//UPC#01.bmp >>>> ONLY ONE WORKING!!!!
 
-//to check the filter
-//EAN128-CONTRAST IMGB ---> NO sencodo gauss barcode ruotato  ---> uguale risultato con angolo rotazione nevativo/positivo!
-//EAN128-LOW DECODABILITY IMGB ---> rotazione senso sbagliato ---> Angolo rotazione negativo migliora!
-//EAN128-MASTER IMGB ---> hough lines gap verticale errore ---> risolto! forse con angolo rotazione nevativo migliora!
-//I25-DEFECTS IMGB ---> vector out of range --> risolto: crop_image.rows invece di scr.rows (harris function, top_y_min) Angolo rotazione negativo migliora!
-//I25-MASTER GRADE IMGB ---> exeption ROI ---> risolto: threshold gap 80 (prima 100). Angolo rotazione negativo migliora!
-//C128_7.5LOW ---> bounding box non perfetta ---> OK!
-//UPC#07 ---> prima e ultima barra non prese ---> risolto: threshold2 canny modificata da 180 a 150
+//gap verticale da rivedere
 
-
-//C39_4.4LOW ---> non funziona con gap verticali attivo!
-// DA RISOLVERE: ROTAZIONE IMMAGINI LUNGHE
 
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("data/EAN-UPC-CONTRAST IMGB.bmp", 1);
+	Mat src = imread("data/UPC#01.bmp", 1);
 	//imshow("src", src);
 
 
@@ -73,7 +60,7 @@ int main(int argc, char** argv)
 
 	GaussianBlur(edges, edges, Size(3, 3), 0, 0, BORDER_DEFAULT);
 	Canny(edges, edges, 50, 150, 3, true);
-	imshow("canny", edges);
+	//imshow("canny", edges);
 	//fastNlMeansDenoising(edges, edges, h, 21, 7);
 	GaussianBlur(edges, edges, Size(3, 3), 0, 0, BORDER_DEFAULT);
 	tie(r_lines2, angle_rotation) = barcode_orientation(edges);
@@ -104,7 +91,7 @@ int main(int argc, char** argv)
 	cvtColor(binary, binary, CV_GRAY2RGB);
 	vector <Point> points_updated = { Point(px[0] - 10 * X, px[2] - X), Point(px[0] - 10 * X, px[3] + X), Point(px[1] + 10 * X, px[3] + X), Point(px[1] + 10 * X, px[2] - X) };
 	drawing_box(binary, points_updated);
-	imshow("binarized image with bounding box", binary);
+	//imshow("binarized image with bounding box", binary);
 
 
 	
@@ -114,9 +101,9 @@ int main(int argc, char** argv)
 	vector<float> y_coord = Harris(rotated_barcode, points_updated, &height);
 	cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
 	vector <Point> harris_points = { Point(px[0], y_coord[0]), Point(px[0], y_coord[1]), Point(px[1], y_coord[1]), Point(px[1], y_coord[0]) };
-	drawing_box(rotated_barcode, harris_points);
+	//drawing_box(rotated_barcode, harris_points);
 
-
+	scan_images(rotated_barcode, harris_points);
 
 	imshow("BOUNDING BOX FINAL", rotated_barcode);
 
