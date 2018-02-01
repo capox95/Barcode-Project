@@ -74,11 +74,11 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	Mat cdst = src.clone();
 	cvtColor(cdst, cdst, CV_GRAY2RGB);
 	float media = 0, sum = 0, median = 0, angle_rotation = 0, valore, val;
-	int count = 0, counter = 0, counter2, differenza = 0, orientation = 0;
+	int count = 0, counter = 0, counter2=0, counter3 = 0, differenza = 0, orientation = 0;
 	bool flag_median = false;
 	vector<Vec4i> lines;
 	vector<Vec4i> r_lines;
-	vector<float> theta, theta_backup;
+	vector<float> theta, theta_backup, theta_r;
 	int minLenght = min((src.rows / 10), (src.cols / 10));
 	cout << "minimum lenght " << minLenght << endl;
 	HoughLinesP(src, lines, 1, CV_PI / 180, 30, minLenght, 5);
@@ -88,22 +88,12 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	{
 		Vec4i l = lines[i];
 		theta.push_back(abs(atan2((l[3] - l[1]), (l[2] - l[0]))));
-		if (valore = (atan2((l[3] - l[1]), (l[2] - l[0]))) > 0) counter++;
+		//if (valore = (atan2((l[3] - l[1]), (l[2] - l[0]))) > 0) counter++;
 		//line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
 
 	}
 
 
-
-	// verso rotazione
-	counter2 = lines.size() - counter;
-	differenza = counter - counter2;
-
-	if (differenza > range2) orientation = -1; // senso orario
-	else if (differenza < -range2) orientation = 1;
-	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
-	cout << "counter " << counter << endl;
-	cout << "counter2 " << counter2 << endl;
 
 	theta_backup = theta;
 
@@ -111,7 +101,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	sort(theta.begin(), theta.end());
 	median = theta[theta.size() / 2];
 	cout << "mediana " << median << endl;
-	cout << "verso di rotazione:  " << orientation << endl;
+
 
 
 	//ciclo dopo aver calcolato la mediana per selezionare le righe giuste
@@ -127,12 +117,35 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 		}
 	}
 
+
+	for (size_t i = 0; i < r_lines.size(); i++)
+	{
+		Vec4i l = r_lines[i];
+		theta_r.push_back(atan2((l[3] - l[1]), (l[2] - l[0])));
+		if ((theta_r[i] >= 0 ) && !(theta_r[i] <= 1.5710 && theta_r[i] >= 1.5706)) counter++;
+		if ((theta_r[i] < 0) && !(theta_r[i] >= -1.5710 && theta_r[i] <= -1.5706)) counter2++;
+		cout << theta_r[i] << endl;
+
+	}
+
+
+	// verso rotazione
+	cout << "counter positivi " << counter << endl;
+	cout << "counter negativi " << counter2 << endl;
+	
+	differenza = counter - counter2;
+	if (differenza > range2) orientation = -1; // senso orario
+	else if (differenza < -range2) orientation = 1; // più negativi che positivi
+	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
+	cout << "verso di rotazione:  " << orientation << endl;
+
+
 	media = sum / r_lines.size();
 	cout << "media theta " << media << endl;
 	angle_rotation = (CV_PI / 2 - abs(media))*(orientation);
 
 
-	imshow("cdst", cdst);
+	//imshow("cdst", cdst);
 
 
 	return make_tuple(r_lines, angle_rotation);
@@ -173,8 +186,8 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
 		}
 	}
 	cout << " numero di gap:  " << k << endl;
-	
-	
+
+
 	switch (k)
 	{
 	case (0): {
@@ -355,10 +368,23 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, int max_vertical_gap) {
 			}
 		}
 	}
+	int diff = r2_lines.size() - result;
+	cout << "diff gap verticali " << diff << endl;
 	cout << " numero di gap verticali trovati:  " << k << endl;
-	for (int s = result + 1; s < r2_lines.size(); s++) {
-		barcode_lines.push_back(r2_lines[s]);
+	if (diff < 0) {
+		for (int s = result + 1; s < r2_lines.size(); s++) {
+			barcode_lines.push_back(r2_lines[s]);
+		}
 	}
+	else {
+		for (int s = 0; s < result; s++) {
+			barcode_lines.push_back(r2_lines[s]);
+		}
+	}
+
+
+
+
 	return barcode_lines;
 }
 
@@ -369,8 +395,8 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	int h = roi[1].y - roi[3].y; // rows - height
 	int x = roi[2].x - roi[0].x; // columns - width
 
-	
-	//ROI E CROP DELL'IMMAGINE
+
+								 //ROI E CROP DELL'IMMAGINE
 	Rect myroi(corner.x, corner.y, x, h);
 	Mat crop_image = src(myroi);
 	Mat crop_bk = crop_image.clone();
@@ -398,7 +424,7 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	//imshow("crop", dst_norm_scaled);
 	vector<Point> top, bottom;
 	cvtColor(crop_bk, crop_bk, CV_GRAY2RGB);
-	
+
 	//HARRIS CORNERS DIVISI TRA BOTTOM E TOP CERCANDO IN UNA FASCIA DI PIXELS UGUALE AD 1/5 DEL NUMERO TOTALE DI COLONNE
 	for (int i = 0; i < corners.size(); i++) {
 		if (corners[i].y < crop_bk.rows / 5) {
@@ -424,7 +450,7 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 		}
 	}
 
-	
+
 	// ALTEZZA MINIMA BARCODE
 	int min = crop_image.rows;
 	int riga = 0;
