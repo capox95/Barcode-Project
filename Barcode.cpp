@@ -33,7 +33,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	Mat src = imread("data/I25-DEFECTS IMGB.bmp", 1);
+	Mat src = imread("data/EAN-UPC-CONTRAST IMGB.bmp", 1);
 	//imshow("src", src);
 
 
@@ -65,8 +65,7 @@ int main(int argc, char** argv)
 	// ROTATION OF THE IMAGE
 	Mat rotated_barcode = rotation_image(src, angle_rotation);
 	//imshow("rotated_barcode", rotated_barcode);
-
-
+	
 	//HOUGH TRANSFORM ON ROTATED IMAGE - STEP 2
 	vector<Vec4i> r_lines2;
 	Mat edges = rotated_barcode.clone();
@@ -78,7 +77,7 @@ int main(int argc, char** argv)
 	//fastNlMeansDenoising(edges, edges, h, 21, 7);
 	GaussianBlur(edges, edges, Size(3, 3), 0, 0, BORDER_DEFAULT);
 	tie(r_lines2, angle_rotation) = barcode_orientation(edges);
-	
+
 
 	//CANCEL VERTICAL LINES AWAY FROM THE BARCODE
 	vector <Vec4i> barcode_lines = gap(r_lines2, 80);
@@ -107,6 +106,7 @@ int main(int argc, char** argv)
 	drawing_box(binary, points_updated);
 	imshow("binarized image with bounding box", binary);
 
+
 	
 	//HARRIS vector<Point> Harris(Mat src, vector<Point> roi);
 	cvtColor(rotated_barcode, rotated_barcode, CV_RGB2GRAY);
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 	cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
 	vector <Point> harris_points = { Point(px[0], y_coord[0]), Point(px[0], y_coord[1]), Point(px[1], y_coord[1]), Point(px[1], y_coord[0]) };
 	drawing_box(rotated_barcode, harris_points);
-	
+
 
 
 	imshow("BOUNDING BOX FINAL", rotated_barcode);
