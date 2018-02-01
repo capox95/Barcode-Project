@@ -27,7 +27,7 @@ vector<float> FirstLastDetector(vector<Vec4i> r_lines) {
 	float corners_x[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
 	float corners_y[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
 	int i_max = 0, i_min = 0, j_max = 0, j_min = 0;
-	
+
 	for (size_t i = 0; i < r_lines.size(); i++) {
 		//i_min e i_max ci definiscono la riga della barra iniziale e finale
 		//calcolo x minore
@@ -53,7 +53,7 @@ vector<float> FirstLastDetector(vector<Vec4i> r_lines) {
 			j_max = i;
 		}
 	}
-	
+
 	vector<float> vec = { corners_x[0], corners_x[1], corners_y[0], corners_y[1] };
 	return vec;
 }
@@ -62,9 +62,7 @@ vector<float> FirstLastDetector(vector<Vec4i> r_lines) {
 Mat rotation_image(Mat src, float angle_rotation) {
 
 	angle_rotation = ((angle_rotation * 180) / (CV_PI));
-	//rotation vector
 	Point2f src_center(src.cols / 2.0F, src.rows / 2.0F);
-	//Point2f src_center(0, 0);
 	Mat rot_mat = getRotationMatrix2D(src_center, angle_rotation, 1.0);
 	Mat dst;
 	warpAffine(src, dst, rot_mat, src.size());
@@ -87,7 +85,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 
 
 	for (size_t i = 0; i < lines.size(); i++)
-	{	
+	{
 		Vec4i l = lines[i];
 		theta.push_back(abs(atan2((l[3] - l[1]), (l[2] - l[0]))));
 		if (valore = (atan2((l[3] - l[1]), (l[2] - l[0]))) > 0) counter++;
@@ -100,7 +98,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	// verso rotazione
 	counter2 = lines.size() - counter;
 	differenza = counter - counter2;
-	
+
 	if (differenza > range2) orientation = -1; // senso orario
 	else if (differenza < -range2) orientation = 1;
 	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
@@ -134,42 +132,28 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	angle_rotation = (CV_PI / 2 - abs(media))*(orientation);
 
 
-	//imshow("cdst", cdst);
+	imshow("cdst", cdst);
 
 
 	return make_tuple(r_lines, angle_rotation);
 
 }
 
-vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
-	
+vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
+
 	// bubble sort
 	bool swap = true;
 	while (swap) {
 		swap = false;
 		for (int i = 0; i < r_lines.size() - 1; i++) {
 			if (r_lines[i][0] > r_lines[i + 1][0]) {
-				//cout << r_lines[i] << endl;
-				//cout << "i+1 vecchio" << r_lines[i + 1] << endl;
 				Vec4i j = r_lines[i];
 				r_lines[i] = r_lines[i + 1];
 				r_lines[i + 1] = j;
-
-				//cout << r_lines[i] << endl;
-				//cout << "i+1" << r_lines[i + 1] << endl;
 				swap = true;
 			}
 		}
 	}
-
-	for (int i = 0; i < r_lines.size(); i++) {
-		cout << r_lines[i] << endl;
-
-	}
-
-
-
-
 
 	vector<Vec4i> barcode_lines;
 	bool gap = true;
@@ -189,6 +173,8 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 		}
 	}
 	cout << " numero di gap:  " << k << endl;
+	
+	
 	switch (k)
 	{
 	case (0): {
@@ -198,12 +184,11 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 		}
 		break;
 	}
-
 	case (1): {
 
 		if (r_lines.size() - result[0] > result[0])
 		{ //gap sinistra
-			for (int i = result[0]+1; i < (r_lines.size() - result[0]); i++) {
+			for (int i = result[0] + 1; i < (r_lines.size() - result[0]); i++) {
 				barcode_lines.push_back(r_lines[i]);
 			}
 		}
@@ -215,16 +200,14 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap){
 		break;
 	}
 	case (2): {
-		for (int i = result[0]+1; i <= (result[1]); i++) {
+		for (int i = result[0] + 1; i <= (result[1]); i++) {
 			barcode_lines.push_back(r_lines[i]);
 		}
 		break;
 	}
-
 	}
 
-		
-	return barcode_lines;	
+	return barcode_lines;
 }
 
 
@@ -236,17 +219,10 @@ int counter_tickness_bars(Mat img, vector<float> px) {
 	int start_y = int(px[2] + distance_y / 2);
 
 	int count_min = 0, result = 1000, temp = 0;
-	/*
-	cout << "distance x " << distance_x << endl;
-	cout << "distance y " << distance_y << endl;
-	cout << "start x " << start_x << endl;
-	cout << "start y " << start_y << endl;
-	*/
 
 	for (int i = start_x; i < (start_x + distance_x); i++)
 	{
 		int x = (int)img.at<uchar>(start_y, i);
-		//int x0 = (int)img.at<uchar>(start_y, i-1);
 
 		if (x == 0) {
 			count_min++;
@@ -296,47 +272,28 @@ Mat clahe(Mat bgr_image) {
 int clahe_detector(Mat src) {
 
 	cvtColor(src, src, CV_RGB2GRAY);
-
-	int threshold = 0;
-
 	int histSize = 256;    // bin size
 	float range[] = { 0, 255 };
 	const float *ranges[] = { range };
-
-
 	Mat Hist = Mat::zeros(1, 256, CV_32F); // size=256
-
-calcHist(&src, 1, 0, Mat(), Hist, 1, &histSize, ranges, true, false);
-
-//GaussianBlur(Hist, Hist, Size(1, 25), 0, 8);
+	calcHist(&src, 1, 0, Mat(), Hist, 1, &histSize, ranges, true, false);
 
 
+	double prob[256];
+	double cdf[256] = { 0 };
 
-double prob[256];
-double cdf[256];
+	for (int i = 0; i < 256; i++) {
+		prob[i] = Hist.at<float>(i) / double(src.rows * src.cols);
+		cdf[i] = cdf[i - 1] + prob[i];
+	}
 
-for (int i = 0; i < 256; i++) {
-	cdf[i] = 0;
-}
+	cdf[0] = prob[0];
+	for (int i = 1; i < 256; i++) {
+		cdf[i] = cdf[i - 1] + prob[i];
+	}
 
-
-
-for (int i = 0; i < 256; i++) {
-	prob[i] = Hist.at<float>(i) / double(src.rows * src.cols);
-	cdf[i] = cdf[i - 1] + prob[i];
-
-}
-cdf[0] = prob[0];
-
-for (int i = 1; i < 256; i++) {
-	cdf[i] = cdf[i - 1] + prob[i];
-
-
-}
-
-
-if (cdf[128] > 0.9) return 1;
-else return 0;
+	if (cdf[128] > 0.9) return 1;
+	else return 0;
 
 }
 
@@ -399,17 +356,21 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, int max_vertical_gap) {
 		}
 	}
 	cout << " numero di gap verticali trovati:  " << k << endl;
-	for (int s = result+1; s < r2_lines.size(); s++){
+	for (int s = result + 1; s < r2_lines.size(); s++) {
 		barcode_lines.push_back(r2_lines[s]);
-}
+	}
 	return barcode_lines;
 }
 
 
 vector<float> Harris(Mat src, vector<Point> roi, int *height) {
+
 	Point corner = roi[0];
-	int h = roi[1].y - roi[3].y;
-	int x = roi[2].x - roi[0].x;
+	int h = roi[1].y - roi[3].y; // rows - height
+	int x = roi[2].x - roi[0].x; // columns - width
+
+	
+	//ROI E CROP DELL'IMMAGINE
 	Rect myroi(corner.x, corner.y, x, h);
 	Mat crop_image = src(myroi);
 	Mat crop_bk = crop_image.clone();
@@ -417,48 +378,44 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	Mat dst_norm, dst_norm_scaled;
 	normalize(crop_image, dst_norm, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
 	convertScaleAbs(dst_norm, dst_norm_scaled);
-	
-	//imshow("destination", crop_image);
 
+
+	//RIEMPIO VECTOR CORNERS IN BASE AD UNA THRESHOLD
 	vector<Point> corners;
-	/// Drawing a circle around corners
 	for (int j = 0; j < dst_norm.rows; j++)
 	{
 		for (int i = 0; i < dst_norm.cols; i++)
-		{	
+		{
 			if ((int)dst_norm.at<float>(j, i) > 127)
-			{	
+			{
 				circle(dst_norm_scaled, Point(i, j), 5, Scalar(0), 2, 8, 0);
 				corners.push_back(Point(i, j));
-
 			}
 		}
 	}
-	//cornerSubPix(crop_image, corners, Size(11, 11), Size(-1, -1), TermCriteria(CV_TERMCRIT_EPS | CV_TERMCRIT_ITER , 30, 0.1));
-	cout << " number corners " << corners.size() << endl;
-	//imshow("crop", crop_image);
-	imshow("crop", dst_norm_scaled);
+
+
+	//imshow("crop", dst_norm_scaled);
 	vector<Point> top, bottom;
-
 	cvtColor(crop_bk, crop_bk, CV_GRAY2RGB);
+	
+	//HARRIS CORNERS DIVISI TRA BOTTOM E TOP CERCANDO IN UNA FASCIA DI PIXELS UGUALE AD 1/5 DEL NUMERO TOTALE DI COLONNE
 	for (int i = 0; i < corners.size(); i++) {
-
 		if (corners[i].y < crop_bk.rows / 5) {
 			top.push_back(corners[i]);
 			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
 		}
-		else if (corners[i].y > 4*crop_bk.rows / 5) {
+		else if (corners[i].y > 4 * crop_bk.rows / 5) {
 			bottom.push_back(corners[i]);
 			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
-
 		}
 	}
 
-
+	//CORRISPONDENZE TRA TOP E BOTTOM PER OTTENERE UNA PRIMA SELEZIONE
 	vector<Point> result_top, result_bot;
 	for (int i = 0; i < top.size(); i++) {
 		for (int j = 0; j < bottom.size(); j++) {
-			if ((bottom[j].x == top[i].x )) {
+			if ((bottom[j].x == top[i].x)) {
 				result_top.push_back(top[i]);
 				result_bot.push_back(bottom[j]);
 				circle(crop_bk, Point(top[i]), 2, Scalar(0, 0, 255), 1);
@@ -467,44 +424,39 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 		}
 	}
 
-
-	int min = src.rows;
+	
+	// ALTEZZA MINIMA BARCODE
+	int min = crop_image.rows;
 	int riga = 0;
 	for (int i = 0; i < result_top.size(); i++) {
-		int diff = result_bot[i].y-result_top[i].y;
+		int diff = result_bot[i].y - result_top[i].y;
 		if (diff < min) {
 			min = diff;
 			riga = i;
 		}
 	}
-	line(crop_bk, result_top[riga], result_bot[riga], Scalar(0, 255, 0), 3, CV_AA);
+	//DISPLAY DELLA LINEA DOVE E' STATA CALCOLATA L'ALEZZA MINIMA
+	//line(crop_bk, result_top[riga], result_bot[riga], Scalar(0, 255, 0), 3, CV_AA);
 
-	int bot_y_min = src.rows;
+
+	//CALCOLO VALORI Y (MIN E MAX) DA USARE PER IL BOUNDING BOX
+	int bot_y_min = crop_image.rows;
 	int top_y_min = 0;
 	for (int i = 0; i < result_bot.size(); i++) {
 		if (result_bot[i].y < bot_y_min) bot_y_min = result_bot[i].y;
 		if (result_top[i].y > top_y_min) top_y_min = result_top[i].y;
 	}
 
-	int bot_x_min = src.cols;
-	int top_x_min = 0;
-	for (int i = 0; i < result_bot.size(); i++) {
-		if (result_bot[i].x < bot_x_min) bot_x_min = result_bot[i].x;
-		if (result_top[i].x > top_x_min) top_x_min = result_top[i].x;
-	}
 
-	int lost = 0;
+	//TRASLAZIONE PER MUOVERSI DAL CROP ALL'IMMAGINE ORIGINALE
 	*height = min;
-
-
 	vector<float> result;
-	result.push_back(top_y_min+corner.y);
-	result.push_back(bot_y_min+corner.y);
+	result.push_back(top_y_min + corner.y);
+	result.push_back(bot_y_min + corner.y);
 
 
+	imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
 
-
-	imshow("rotated barcode corners", crop_bk);
 
 	return result;
 }
