@@ -598,11 +598,6 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		}
 		estremi.push_back(tp);
 	}
-
-
-	cout << estremi[0] << endl;
-
-
 	for (int i = 0; i < cross.size() - 1; i++) {
 		int t_max = 0, t_min = 255;
 		for (int j = cross[i]; j < cross[i + 1]; j++) {
@@ -622,30 +617,96 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		flag = !flag;
 	}
 	
-	/*
 	//ultimo elemento
 	if(flag){
 		int tp = 0;
-			for (int i = cross[cross.size()-1]; i < w; i++) {
-				if (scan_profile.at<float>(i) > tp) {
-					tp = scan_profile.at<float>(i);
-					cout << scan_profile.at<float>(i) << endl;
-				}
+		for (int i = cross[cross.size()-1]; i < w; i++) {
+			if (scan_profile.at<float>(i) > tp) {
+				tp = scan_profile.at<float>(i);
+				//cout << scan_profile.at<float>(i) << endl;
 			}
-			estremi.push_back(scan_profile.at<float>(tp));
+		}
+		estremi.push_back(tp);
 
 	}
 	else {																 // cerchiamo un minimo
 		int tp = 255;
 		for (int i = cross[cross.size()-1]; i < w; i++) {
-				if (scan_profile.at<float>(i) < tp) {
-					tp = scan_profile.at<float>(i);
+			if (scan_profile.at<float>(i) < tp) {
+				tp = scan_profile.at<float>(i);
 				}
 			}
-		estremi.push_back(scan_profile.at<float>(tp));
+		estremi.push_back(tp);
 
 	}
-	*/
+	
+
+	vector<float> defects;
+	//primo intervallo
+
+	if ((scan_profile.at<float>(cross[0])) < threshold) { // cerchiamo un picco di minimo nel massimo
+		int t_min = 0;
+		flag = true;
+		for (int j = 1; j < cross[0]-1; j++) {
+			if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) > t_min)) {
+				t_min = scan_profile.at<float>(j);
+			}
+		}
+		defects.push_back(t_min);
+	}
+	else {																 // cerchiamo un picco di massimo nel minimo
+		int t_max = 255;
+		flag = false;
+		for (int j = 1; j < cross[0]-1; j++) {
+			if ((scan_profile.at<float>(j) <= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) <= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
+				t_max = scan_profile.at<float>(j);
+			}
+		}
+		defects.push_back(t_max);
+	}
+	//intervalli successivi
+	for (int i = 0; i < cross.size() - 1; i++) {
+		int t_max = 255, t_min = 0;
+		for (int j = cross[i]; j < cross[i + 1]; j++) {
+			if (flag) { // cerchiamo un massimo nel minimo
+				if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) &&  (scan_profile.at<float>(j) > t_min)) {
+					t_min = scan_profile.at<float>(j);
+				}
+			}
+			else { //cerchiamo un minimo nel massimo
+				if ((scan_profile.at<float>(j) <= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) <= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
+					t_max = scan_profile.at<float>(j);
+				}
+			}
+		}
+		if (flag) defects.push_back(t_min);
+		else defects.push_back(t_max);
+		flag = !flag;
+	}
+	//ultimo intervall
+	if ((scan_profile.at<float>(cross[cross.size()-1])) > threshold) { // cerchiamo un picco di minimo nel massimo
+		int t_min = 0;
+		flag = true;
+		for (int j = cross[cross.size() - 1]+1; j < w - 1; j++) {
+			if ((scan_profile.at<float>(j) <= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) <= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) > t_min)) {
+				t_min = scan_profile.at<float>(j);
+			}
+		}
+		defects.push_back(t_min);
+	}
+	else {																 // cerchiamo un picco di massimo nel minimo
+		int t_max = 255;
+		flag = false;
+		for (int j = cross[cross.size()-1]+1; j < w - 1; j++) {
+			cout << " valori:   " << scan_profile.at<float>(j) << endl;
+			if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
+				t_max = scan_profile.at<float>(j);
+			}
+		}
+		defects.push_back(t_max);
+	}
+
+
 
 	for (int i = 0; i < estremi.size()-1; i++) {
 		int x = abs(estremi[i] - estremi[i + 1]);
