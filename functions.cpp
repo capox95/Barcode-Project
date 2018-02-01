@@ -124,7 +124,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 		theta_r.push_back(atan2((l[3] - l[1]), (l[2] - l[0])));
 		if ((theta_r[i] >= 0 ) && !(theta_r[i] <= 1.5710 && theta_r[i] >= 1.5706)) counter++;
 		if ((theta_r[i] < 0) && !(theta_r[i] >= -1.5710 && theta_r[i] <= -1.5706)) counter2++;
-		cout << theta_r[i] << endl;
+		//cout << theta_r[i] << endl;
 
 	}
 
@@ -253,7 +253,6 @@ int counter_tickness_bars(Mat img, vector<float> px) {
 }
 
 
-
 Mat clahe(Mat bgr_image) {
 
 	Mat lab_image;
@@ -314,7 +313,7 @@ int clahe_detector(Mat src) {
 void plot_histogram(Mat Hist, int histSize) {
 
 	// Plot the histogram
-	int hist_w = 512; int hist_h = 400;
+	int hist_w = histSize; int hist_h = 400;
 	int bin_w = cvRound((double)hist_w / histSize);
 
 	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
@@ -324,7 +323,7 @@ void plot_histogram(Mat Hist, int histSize) {
 	{
 		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(Hist.at<float>(i - 1))),
 			Point(bin_w*(i), hist_h - cvRound(Hist.at<float>(i))),
-			Scalar(255, 0, 0), 2, 8, 0);
+			Scalar(255, 0, 0), 1, 1, 0);
 	}
 
 	namedWindow("Result", 1);    imshow("Result", histImage);
@@ -481,8 +480,125 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	result.push_back(bot_y_min + corner.y);
 
 
-	imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
+	//imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
 
 
 	return result;
+}
+
+
+void scan_images(Mat src, vector<Point> harris_points) {
+
+	int h = harris_points[1].y - harris_points[0].y;
+	int space = (h / 10);
+	int w = harris_points[2].x - harris_points[0].x;
+	Rect myroi(harris_points[0].x, harris_points[0].y, w, h);
+	Mat crop_image = src(myroi);
+
+	//CROP IN 10 IMMAGINI SEPARATE
+	vector<Mat> crop_images;
+	int temp = 0;
+	for (int i = 0; i < 10; i++) {
+		temp = temp + space;
+		Rect myroi(harris_points[0].x, harris_points[1].y-temp, w, space);
+		crop_images.push_back(src(myroi));
+	}
+
+	// COUNTER NUMERO DI EDGES
+	Mat working = crop_images[5];
+	Mat edges;
+	Canny(working, edges, 50, 150, 3, true);
+	int count_edges = 0;
+	for (int i = 0; i < edges.cols; i++) {
+		int value = edges.at<uchar>(edges.rows / 2, i);
+		if (value == 255) count_edges++;
+	}
+	cout << "number edges " << count_edges << endl;
+	//imshow("edges crop", edges);
+
+
+	Mat scan_profile = Mat::zeros(1, w, CV_32F); // size=width
+
+
+	for (int i = 0; i < w; i++) {
+		int value = working.at<uchar>(working.rows / 2, i);
+		scan_profile.at<float>(i) = value;
+	}
+
+
+	/*
+	// test for pixel intensity
+	vector<int> scan;
+	for (int i = 0; i < w; i++) {
+		int value = working.at<uchar>(working.rows / 2, i);
+		scan.push_back(value);
+	}
+
+	for (int i = 0; i < scan.size(); i++) {
+		cout << "scan i:	" << i << "		valore:   " << scan[i] << endl;
+	}
+	*/
+
+
+
+
+
+	//CALCOLO PARAMETRI
+
+	float Rmin=0, Rmax=0, ECmin=0, symbol_contrast=0, modulation=0, ERNman=0;
+	float max = 0, min = 255;
+	for (int i = 0; i < scan_profile.cols; i++) {
+		float temp = scan_profile.at<float>(i);
+		if (temp > max) max = temp;
+		if (temp < min) min = temp;
+	}
+
+	Rmax = max;
+	Rmin = min;
+
+	cout << "Rmax " << Rmax << endl;
+	cout << "Rmin " << Rmin << endl;
+
+
+	cvtColor(src, src, CV_RGB2GRAY);
+
+	double th = threshold(src, src, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+
+
+
+
+	double threshold = th;
+	cout << "threshold scan profile " << threshold << endl;
+
+	//ECMIN
+	vector<int> cross;
+	for (int i = 1; i < scan_profile.cols; i++) {
+		float temp = scan_profile.at<float>(i);
+		float temp0 = scan_profile.at<float>(i-1);
+		cout << " valore  " << temp << endl;
+		if (((temp >= threshold)&& (temp0 < threshold)) || ((temp <= threshold) && (temp0 > threshold))) {
+			cross.push_back(i);
+			cout << "i" << i << endl;
+			circle(working, Point(i,working.rows/2), 1, Scalar(0, 0, 255), 1);
+
+
+		}
+
+
+	}
+
+
+
+	imshow("crop", working);
+
+	/*
+	for (int i = 0; i< 10; i++)
+	{
+		imshow("crop", crop_images[i]);
+		waitKey(-30);
+	}
+	*/
+
+
+
 }
