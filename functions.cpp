@@ -698,7 +698,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		int t_max = 255;
 		flag = false;
 		for (int j = cross[cross.size()-1]+1; j < w - 1; j++) {
-			cout << " valori:   " << scan_profile.at<float>(j) << endl;
+		
 			if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
 				t_max = scan_profile.at<float>(j);
 			}
@@ -717,23 +717,36 @@ void scan_images(Mat src, vector<Point> harris_points) {
 
 
 	//SYMBOL CONTRAST
-	symbol_contrast = ((Rmax - Rmin)/255)*100;
+	symbol_contrast = Rmax - Rmin;
+	float symbol_contrast_perc = ((Rmax - Rmin)/255)*100;
 	cout << "Symbol Constrast " << symbol_contrast << endl;
+	cout << "Symbol Constrast perc " << symbol_contrast_perc << endl;
 
 	//MODULATION
-	modulation = ECmin / (Rmax-Rmin);
+	modulation = ECmin / symbol_contrast;
 	cout << "Modulation " << modulation << endl;
 
 
 
+	//DEFECT CALCULATION - ERNmax
+	vector<float> ern;
+	for (int i = 0; i < estremi.size(); i++) {
+		if (defects[i] == 0) ern.push_back(0);
+		else {
+			int value = abs(estremi[i] - defects[i]);
+			ern.push_back(value);			
+		}
+	}
 
+	int t = ern[0];
+	for (int i = 1; i < ern.size(); i++) {
+		if (ern[i] > t) t = ern[i];
+	}
+	int max_ern = t;
+	cout << "max ern " << max_ern << endl;
 
-
-
-
-
-
-
+	float defect = max_ern / symbol_contrast;
+	cout << "defect " << defect << endl;
 
 	imshow("crop", working);
 
