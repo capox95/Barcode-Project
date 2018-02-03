@@ -70,11 +70,11 @@ Mat rotation_image(Mat src, float angle_rotation) {
 }
 
 
-tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
+tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 	Mat cdst = src.clone();
 	cvtColor(cdst, cdst, CV_GRAY2RGB);
 	float media = 0, sum = 0, median = 0, angle_rotation = 0, valore, val;
-	int count = 0, counter = 0, counter2=0, counter3 = 0, differenza = 0, orientation = 0;
+	int count = 0, counter = 0, counter2 = 0, counter3 = 0, differenza = 0, orientation = 0;
 	bool flag_median = false;
 	vector<Vec4i> lines;
 	vector<Vec4i> r_lines;
@@ -122,7 +122,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	{
 		Vec4i l = r_lines[i];
 		theta_r.push_back(atan2((l[3] - l[1]), (l[2] - l[0])));
-		if ((theta_r[i] >= 0 ) && !(theta_r[i] <= 1.5710 && theta_r[i] >= 1.5706)) counter++;
+		if ((theta_r[i] >= 0) && !(theta_r[i] <= 1.5710 && theta_r[i] >= 1.5706)) counter++;
 		if ((theta_r[i] < 0) && !(theta_r[i] >= -1.5710 && theta_r[i] <= -1.5706)) counter2++;
 		//cout << theta_r[i] << endl;
 
@@ -132,7 +132,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	// verso rotazione
 	cout << "counter positivi " << counter << endl;
 	cout << "counter negativi " << counter2 << endl;
-	
+
 	differenza = counter - counter2;
 	if (differenza > range2) orientation = -1; // senso orario
 	else if (differenza < -range2) orientation = 1; // più negativi che positivi
@@ -145,12 +145,16 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src) {
 	angle_rotation = (CV_PI / 2 - abs(media))*(orientation);
 
 
+	*flag = false;
+	if ((media < CV_PI / 2 - 0.01) || (media > CV_PI / 2 + 0.01)) *flag = true;
+
 	//imshow("cdst", cdst);
 
 
 	return make_tuple(r_lines, angle_rotation);
 
 }
+
 
 vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
 
@@ -330,60 +334,47 @@ void plot_histogram(Mat Hist, int histSize) {
 }
 
 
-vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, int max_vertical_gap) {
+vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src) {
 
-	// bubble sort per ordinare r2_line rispetto all y
-	bool swap = true;
-	while (swap) {
-		swap = false;
-		for (int i = 0; i < r2_lines.size() - 1; i++) {
-			if (r2_lines[i][1] > r2_lines[i + 1][1]) {
-				//cout << r_lines[i] << endl;
-				//cout << "i+1 vecchio" << r_lines[i + 1] << endl;
-				Vec4i j = r2_lines[i];
-				r2_lines[i] = r2_lines[i + 1];
-				r2_lines[i + 1] = j;
+	const int offset = 10;
 
-				//cout << r_lines[i] << endl;
-				//cout << "i+1" << r_lines[i + 1] << endl;
-				swap = true;
-			}
-		}
-	}
 	vector<Vec4i> barcode_lines;
-	bool gap = true;
-	int result = 0;
-	int k = 0;
-	while (gap) {
-
-		gap = false;
-		for (int i = 0; i < r2_lines.size() - 1; i++) {
-			Vec4i l = r2_lines[i];
-			Vec4i l0 = r2_lines[i + 1];
-
-			if ((l0[1] - l[1]) > max_vertical_gap) {
-				result = i;
-				k++;
-			}
+	//distribuzione tipo "istogramma" del barcode verticalmente
+	const int size = 1280;
+	int hist[size] = { 0 };
+	for (int i = 0; i < r2_lines.size(); i++) {
+		for (int j = r2_lines[i][3]; j < r2_lines[i][1]; j++) {
+			hist[j]++;
 		}
 	}
-	int diff = r2_lines.size() - result;
-	cout << "diff gap verticali " << diff << endl;
-	cout << " numero di gap verticali trovati:  " << k << endl;
-	if (diff < 0) {
-		for (int s = result + 1; s < r2_lines.size(); s++) {
-			barcode_lines.push_back(r2_lines[s]);
-		}
-	}
-	else {
-		for (int s = 0; s < result; s++) {
-			barcode_lines.push_back(r2_lines[s]);
+	
+	int middle = src.rows / 2;
+	int i_min, i_max;
+	bool found = false;
+	//parte superiore
+	for (int i = middle; i > 0; i--) {
+		if (hist[i] == 0 && found == false) {
+			i_min = i;
+			found = true;
 		}
 	}
 
+	found = false;
+	//parte inferire
+	for (int i = middle; i < size; i++) {
+		if (hist[i] == 0 && found == false) {
+			i_max = i;
+			found = true;
+		}
+	}
 
-
-
+	//selezione delle hough lines buone dentro barcode_lines
+	for (int i = 0; i < r2_lines.size(); i++) {
+		if ((r2_lines[i][1] > i_min - offset) && (r2_lines[i][3] < i_max + offset)) {
+			barcode_lines.push_back(r2_lines[i]);
+		}
+	}
+	
 	return barcode_lines;
 }
 
@@ -395,7 +386,7 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	int x = roi[2].x - roi[0].x; // columns - width
 
 
-								 //ROI E CROP DELL'IMMAGINE
+	//ROI E CROP DELL'IMMAGINE
 	Rect myroi(corner.x, corner.y, x, h);
 	Mat crop_image = src(myroi);
 	Mat crop_bk = crop_image.clone();
@@ -500,7 +491,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	int temp = 0;
 	for (int i = 0; i < 10; i++) {
 		temp = temp + space;
-		Rect myroi(harris_points[0].x, harris_points[1].y-temp, w, space);
+		Rect myroi(harris_points[0].x, harris_points[1].y - temp, w, space);
 		crop_images.push_back(src(myroi));
 	}
 
@@ -531,12 +522,12 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	// test for pixel intensity
 	vector<int> scan;
 	for (int i = 0; i < w; i++) {
-		int value = working.at<uchar>(working.rows / 2, i);
-		scan.push_back(value);
+	int value = working.at<uchar>(working.rows / 2, i);
+	scan.push_back(value);
 	}
 
 	for (int i = 0; i < scan.size(); i++) {
-		cout << "scan i:	" << i << "		valore:   " << scan[i] << endl;
+	cout << "scan i:	" << i << "		valore:   " << scan[i] << endl;
 	}
 	*/
 
@@ -567,8 +558,8 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	vector<int> cross;
 	for (int i = 1; i < scan_profile.cols; i++) {
 		float temp = scan_profile.at<float>(i);
-		float temp0 = scan_profile.at<float>(i-1);
-		if (((temp >= threshold)&& (temp0 < threshold)) || ((temp <= threshold) && (temp0 > threshold))) {
+		float temp0 = scan_profile.at<float>(i - 1);
+		if (((temp >= threshold) && (temp0 < threshold)) || ((temp <= threshold) && (temp0 > threshold))) {
 			cross.push_back(i);
 			//circle(working, Point(i,working.rows/2), 1, Scalar(0, 0, 255), 1);
 		}
@@ -576,9 +567,9 @@ void scan_images(Mat src, vector<Point> harris_points) {
 
 	vector <float> estremi, local_estremi;
 	bool flag; // true se il primo è un massimo
-	
+
 	if ((scan_profile.at<float>(cross[0])) < threshold) { // cerchiamo un massimo
-		int tp = 0;					
+		int tp = 0;
 		flag = true;
 		for (int i = 0; i < cross[0]; i++) {
 			if (scan_profile.at<float>(i) > tp) {
@@ -609,18 +600,18 @@ void scan_images(Mat src, vector<Point> harris_points) {
 			else {
 				if (scan_profile.at<float>(j) > t_max) {
 					t_max = scan_profile.at<float>(j);
-					}
+				}
 			}
 		}
 		if (flag) estremi.push_back(t_min);
 		else estremi.push_back(t_max);
 		flag = !flag;
 	}
-	
+
 	//ultimo elemento
-	if(flag){
+	if (flag) {
 		int tp = 0;
-		for (int i = cross[cross.size()-1]; i < w; i++) {
+		for (int i = cross[cross.size() - 1]; i < w; i++) {
 			if (scan_profile.at<float>(i) > tp) {
 				tp = scan_profile.at<float>(i);
 				//cout << scan_profile.at<float>(i) << endl;
@@ -631,15 +622,15 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	}
 	else {																 // cerchiamo un minimo
 		int tp = 255;
-		for (int i = cross[cross.size()-1]; i < w; i++) {
+		for (int i = cross[cross.size() - 1]; i < w; i++) {
 			if (scan_profile.at<float>(i) < tp) {
 				tp = scan_profile.at<float>(i);
-				}
 			}
+		}
 		estremi.push_back(tp);
 
 	}
-	
+
 
 	vector<float> defects;
 	//primo intervallo
@@ -647,7 +638,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	if ((scan_profile.at<float>(cross[0])) < threshold) { // cerchiamo un picco di minimo nel massimo
 		int t_min = 0;
 		flag = true;
-		for (int j = 1; j < cross[0]-1; j++) {
+		for (int j = 1; j < cross[0] - 1; j++) {
 			if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) > t_min)) {
 				t_min = scan_profile.at<float>(j);
 			}
@@ -657,7 +648,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	else {																 // cerchiamo un picco di massimo nel minimo
 		int t_max = 255;
 		flag = false;
-		for (int j = 1; j < cross[0]-1; j++) {
+		for (int j = 1; j < cross[0] - 1; j++) {
 			if ((scan_profile.at<float>(j) <= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) <= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
 				t_max = scan_profile.at<float>(j);
 			}
@@ -669,7 +660,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		int t_max = 255, t_min = 0;
 		for (int j = cross[i]; j < cross[i + 1]; j++) {
 			if (flag) { // cerchiamo un massimo nel minimo
-				if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) &&  (scan_profile.at<float>(j) > t_min)) {
+				if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) > t_min)) {
 					t_min = scan_profile.at<float>(j);
 				}
 			}
@@ -684,10 +675,10 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		flag = !flag;
 	}
 	//ultimo intervall
-	if ((scan_profile.at<float>(cross[cross.size()-1])) > threshold) { // cerchiamo un picco di minimo nel massimo
+	if ((scan_profile.at<float>(cross[cross.size() - 1])) > threshold) { // cerchiamo un picco di minimo nel massimo
 		int t_min = 0;
 		flag = true;
-		for (int j = cross[cross.size() - 1]+1; j < w - 1; j++) {
+		for (int j = cross[cross.size() - 1] + 1; j < w - 1; j++) {
 			if ((scan_profile.at<float>(j) <= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) <= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) > t_min)) {
 				t_min = scan_profile.at<float>(j);
 			}
@@ -697,8 +688,8 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	else {																 // cerchiamo un picco di massimo nel minimo
 		int t_max = 255;
 		flag = false;
-		for (int j = cross[cross.size()-1]+1; j < w - 1; j++) {
-		
+		for (int j = cross[cross.size() - 1] + 1; j < w - 1; j++) {
+
 			if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
 				t_max = scan_profile.at<float>(j);
 			}
@@ -708,7 +699,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 
 
 
-	for (int i = 0; i < estremi.size()-1; i++) {
+	for (int i = 0; i < estremi.size() - 1; i++) {
 		int x = abs(estremi[i] - estremi[i + 1]);
 		if (x < ECmin) ECmin = x;
 
@@ -718,7 +709,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 
 	//SYMBOL CONTRAST
 	symbol_contrast = Rmax - Rmin;
-	float symbol_contrast_perc = ((Rmax - Rmin)/255)*100;
+	float symbol_contrast_perc = ((Rmax - Rmin) / 255) * 100;
 	cout << "Symbol Constrast " << symbol_contrast << endl;
 	cout << "Symbol Constrast perc " << symbol_contrast_perc << endl;
 
@@ -734,7 +725,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		if (defects[i] == 0) ern.push_back(0);
 		else {
 			int value = abs(estremi[i] - defects[i]);
-			ern.push_back(value);			
+			ern.push_back(value);
 		}
 	}
 
@@ -753,8 +744,8 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	/*
 	for (int i = 0; i< 10; i++)
 	{
-		imshow("crop", crop_images[i]);
-		waitKey(-30);
+	imshow("crop", crop_images[i]);
+	waitKey(-30);
 	}
 	*/
 
