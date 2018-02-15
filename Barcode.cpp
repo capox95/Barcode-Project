@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 			
 			// CLAHE DETECTION
 			int use_clahe = clahe_detector(src);
-			cout << "use clahe " << use_clahe << endl;
+			//cout << "use clahe " << use_clahe << endl;
 			if (use_clahe) src = clahe(src);
 			
 
@@ -67,12 +67,13 @@ int main(int argc, char** argv)
 			float angle_rotation;
 			bool flag_gauss;
 			tie(r_lines, angle_rotation) = barcode_orientation(dst, &flag_gauss);
-			cout << "angle rotation" << angle_rotation << endl;
+			//cout << "angle rotation" << angle_rotation << endl;
 
 
 
 			// ROTATION OF THE IMAGE
 			Mat rotated_barcode = rotation_image(src, angle_rotation);
+			Mat scan_image = rotated_barcode.clone();
 			//imshow("rotated_barcode", rotated_barcode);
 
 			//HOUGH TRANSFORM ON ROTATED IMAGE - STEP 2
@@ -89,7 +90,7 @@ int main(int argc, char** argv)
 			tie(r_lines2, angle_rotation) = barcode_orientation(blur, &flag_gauss);
 
 			if ((flag_gauss)) {
-				cout << "hough again without gaussianblur" << endl;
+				//cout << "Hough Again Without GaussianBlur" << endl;
 				tie(r_lines2, angle_rotation) = barcode_orientation(edges, &flag_gauss);
 			}
 
@@ -105,12 +106,12 @@ int main(int argc, char** argv)
 			Mat binary = rotated_barcode.clone();
 			cvtColor(binary, binary, CV_RGB2GRAY);
 			double th = threshold(binary, binary, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-			cout << " threshold OTSU " << th << endl;
+			//cout << " threshold OTSU: " << th << endl;
 
 
 			//EXTRACTION THICKNESS SMALLEST BAR, BOUNDING BOX UPDATED!
 			int X = counter_tickness_bars(binary, px);
-			cout << "size smaller bar " << X << endl;
+			cout << "Size Smaller Bar X: " << X << endl;
 
 
 			// BOUNDING BOX DRAWING
@@ -132,7 +133,7 @@ int main(int argc, char** argv)
 			vector <Point> harris_points = { Point(px[0], y_coord[0]), Point(px[0], y_coord[1]), Point(px[1], y_coord[1]), Point(px[1], y_coord[0]) };
 			drawing_box(rotated_barcode, harris_points);
 
-			//scan_images(rotated_barcode, harris_points);
+			//scan_images_average(scan_image, harris_points);
 
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
 			namedWindow("BOUNDING BOX FINAL", CV_WINDOW_AUTOSIZE);
