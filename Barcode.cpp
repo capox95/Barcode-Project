@@ -36,20 +36,20 @@ int main(int argc, char** argv)
 
 
 
-			Mat src = imread("data/" + line + ".bmp", 1);
-			//Mat src = imread("data/EAN128-MASTER IMGB.bmp", 1);
-
+			//Mat src = imread("data/" + line + ".bmp", 1);
+			Mat src = imread("data/C128_7.5UP.bmp", 1);
+			Mat scan_image = src.clone();
 			cout << endl;
 			cout << "IMAGE: " << line << endl;
-			
+
 			//imshow("src", src);
 
-			
+
 			// CLAHE DETECTION
 			int use_clahe = clahe_detector(src);
 			//cout << "use clahe " << use_clahe << endl;
 			if (use_clahe) src = clahe(src);
-			
+
 
 			// EDGE DETECTION
 			Mat dst = src.clone();
@@ -68,13 +68,13 @@ int main(int argc, char** argv)
 			bool flag_gauss;
 			tie(r_lines, angle_rotation) = barcode_orientation(dst, &flag_gauss);
 			//cout << "angle rotation" << angle_rotation << endl;
-
+			
 
 
 			// ROTATION OF THE IMAGE
 			Mat rotated_barcode = rotation_image(src, angle_rotation);
-			Mat scan_image = rotated_barcode.clone();
-			//imshow("rotated_barcode", rotated_barcode);
+			scan_image = rotation_image(scan_image, angle_rotation);
+			cvtColor(scan_image, scan_image, CV_RGB2GRAY);
 
 			//HOUGH TRANSFORM ON ROTATED IMAGE - STEP 2
 			vector<Vec4i> r_lines2;
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 			vector <float> px = FirstLastDetector(barcode_lines2); //obtain initial and final bar
 
 
-																  // BINARIZATION OF THE IMAGE
+																   // BINARIZATION OF THE IMAGE
 			Mat binary = rotated_barcode.clone();
 			cvtColor(binary, binary, CV_RGB2GRAY);
 			double th = threshold(binary, binary, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
@@ -110,7 +110,7 @@ int main(int argc, char** argv)
 
 
 			//EXTRACTION THICKNESS SMALLEST BAR, BOUNDING BOX UPDATED!
-			int X = counter_tickness_bars(binary, px);
+			int X = counter_thickness_bars(binary, px);
 			cout << "Size Smaller Bar X: " << X << endl;
 
 
@@ -130,10 +130,14 @@ int main(int argc, char** argv)
 			int height;
 			vector<float> y_coord = Harris(rotated_barcode, points_updated, &height);
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
-			vector <Point> harris_points = { Point(px[0], y_coord[0]), Point(px[0], y_coord[1]), Point(px[1], y_coord[1]), Point(px[1], y_coord[0]) };
+			vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0]- 10 * X, y_coord[1]+ X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
 			drawing_box(rotated_barcode, harris_points);
 
-			//scan_images_average(scan_image, harris_points);
+
+
+
+			scan_images_average(scan_image, harris_points);
+			//imshow("scan image", scan_image);
 
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
 			namedWindow("BOUNDING BOX FINAL", CV_WINDOW_AUTOSIZE);
@@ -146,7 +150,7 @@ int main(int argc, char** argv)
 
 	}
 	else cout << "Unable to open file";
-	
 
-return 0;
+
+	return 0;
 }
