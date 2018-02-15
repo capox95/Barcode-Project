@@ -10,8 +10,8 @@ using namespace cv;
 using namespace std;
 
 // for the selection of the good lines among the set provided by Hough
-#define delta 0.02 
-#define range2 20
+#define delta 0.02 // barcode_orientation function, median calculation
+#define range2 20 // barcode_orientation function, counter number positive/negative results
 
 void drawing_box(Mat dst, vector<Point> points) {
 
@@ -80,7 +80,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 	vector<Vec4i> r_lines;
 	vector<float> theta, theta_backup, theta_r;
 	int minLenght = min((src.rows / 10), (src.cols / 10));
-	cout << "minimum lenght " << minLenght << endl;
+	//cout << "minimum lenght " << minLenght << endl;
 	HoughLinesP(src, lines, 1, CV_PI / 180, 30, minLenght, 5);
 
 
@@ -100,7 +100,7 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 	// calcolo mediana
 	sort(theta.begin(), theta.end());
 	median = theta[theta.size() / 2];
-	cout << "mediana " << median << endl;
+	//cout << "mediana " << median << endl;
 
 
 
@@ -130,18 +130,18 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 
 
 	// verso rotazione
-	cout << "counter positivi " << counter << endl;
-	cout << "counter negativi " << counter2 << endl;
+	//cout << "counter positivi " << counter << endl;
+	//cout << "counter negativi " << counter2 << endl;
 
 	differenza = counter - counter2;
 	if (differenza > range2) orientation = -1; // senso orario
 	else if (differenza < -range2) orientation = 1; // più negativi che positivi
 	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
-	cout << "verso di rotazione:  " << orientation << endl;
+	//cout << "verso di rotazione:  " << orientation << endl;
 
 
 	media = sum / r_lines.size();
-	cout << "media theta " << media << endl;
+	//cout << "media theta " << media << endl;
 	angle_rotation = (CV_PI / 2 - abs(media))*(orientation);
 
 
@@ -189,7 +189,7 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
 			}
 		}
 	}
-	cout << " numero di gap:  " << k << endl;
+	//cout << " numero di gap:  " << k << endl;
 
 
 	switch (k)
@@ -478,8 +478,27 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 }
 
 
-void scan_images(Mat src, vector<Point> harris_points) {
 
+float edges_counter(Mat src) {
+	
+	cvtColor(src, src, CV_RGB2GRAY);
+	Mat edges;
+	Canny(src, edges, 50, 150, 3, true);
+	float count_edges = 0;
+	for (int i = 0; i < edges.cols; i++) {
+		int value = edges.at<uchar>(edges.rows / 2, i);
+		if (value == 255) count_edges++;
+	}
+	cout << "Number Edges: " << count_edges << endl;
+
+	return count_edges;
+}
+
+
+
+
+void scan_images_average(Mat src, vector<Point> harris_points) {
+	
 	int h = harris_points[1].y - harris_points[0].y;
 	int space = (h / 10);
 	int w = harris_points[2].x - harris_points[0].x;
@@ -495,66 +514,77 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		crop_images.push_back(src(myroi));
 	}
 
-	// COUNTER NUMERO DI EDGES
-	Mat working = crop_images[5];
-	cvtColor(working, working, CV_RGB2GRAY);
-	Mat edges;
-	Canny(working, edges, 50, 150, 3, true);
-	int count_edges = 0;
-	for (int i = 0; i < edges.cols; i++) {
-		int value = edges.at<uchar>(edges.rows / 2, i);
-		if (value == 255) count_edges++;
+
+	float Number_Edges = 0, Rmin = 0, Rmax = 0, ECmin = 0, SC = 0, Mod = 0, Def = 0;
+
+	for (int i = 0; i < 10; i++) {
+		vector<float> result = scan_images(crop_images[i]);
+		Number_Edges += result[0];
+		Rmin += result[1];
+		Rmax += result[2];
+		ECmin += result[3];
+		SC += result[4];
+		Mod += result[5];
+		Def += result[6];
 	}
-	cout << "number edges " << count_edges << endl;
-	//imshow("edges crop", edges);
+
+	
+	// media di ogni valore;
+	cout << endl;
+	cout << "MEAN VALUES " << endl;
+	cout << "Number Edges " << Number_Edges / 10 << endl;
+	cout << "Rmin " << Rmin / 10 << endl;
+	cout << "Rmax " << Rmax / 10 << endl;
+	cout << "ECmin " << ECmin / 10 << endl;
+	cout << "SC " << SC / 10 << endl;
+	cout << "Mod " << Mod / 10 << endl;
+	cout << "Def " << Def / 10 << endl;
 
 
-	Mat scan_profile = Mat::zeros(1, w, CV_32F); // size=width
+	
+
+}
 
 
-	for (int i = 0; i < w; i++) {
+
+
+
+
+
+
+
+vector<float> scan_images(Mat working) {
+
+
+	float number_edges = edges_counter(working);
+	
+
+	//Scan Reflectance Profile
+	Mat scan_profile = Mat::zeros(1, working.cols, CV_32F); // size=width
+	for (int i = 0; i < working.cols; i++) {
 		int value = working.at<uchar>(working.rows / 2, i);
 		scan_profile.at<float>(i) = value;
 	}
 
 
-	/*
-	// test for pixel intensity
-	vector<int> scan;
-	for (int i = 0; i < w; i++) {
-	int value = working.at<uchar>(working.rows / 2, i);
-	scan.push_back(value);
-	}
-
-	for (int i = 0; i < scan.size(); i++) {
-	cout << "scan i:	" << i << "		valore:   " << scan[i] << endl;
-	}
-	*/
-
-
-
-
-
 	//CALCOLO PARAMETRI
+	float ECmin = 255, symbol_contrast = 0, modulation = 0, ERNman = 0;
+	
 
-	float Rmin = 0, Rmax = 0, ECmin = 255, symbol_contrast = 0, modulation = 0, ERNman = 0;
-	float max = 0, min = 255;
+	//REFLECTANCE
+	float Rmax = 0, Rmin = 255;
 	for (int i = 0; i < scan_profile.cols; i++) {
 		float temp = scan_profile.at<float>(i);
-		if (temp > max) max = temp;
-		if (temp < min) min = temp;
+		if (temp > Rmax) Rmax = temp;
+		if (temp < Rmin) Rmin = temp;
 	}
+	cout << "Max Reflectance: " << Rmax << endl;
+	cout << "Min Reflectance: " << Rmin << endl;
 
-	Rmax = max;
-	Rmin = min;
 
-	cout << "Rmax " << Rmax << endl;
-	cout << "Rmin " << Rmin << endl;
-
+	//MIN EDGE CONTRAST - ECMIN
 	int threshold = (Rmax - Rmin) / 2;
-	//cout << "threshold scan profile " << threshold << endl;
-
-	//ECMIN
+	
 	vector<int> cross;
 	for (int i = 1; i < scan_profile.cols; i++) {
 		float temp = scan_profile.at<float>(i);
@@ -566,8 +596,9 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	}
 
 	vector <float> estremi, local_estremi;
+	
+	// intervallo: inizio barcode - cross[0] 
 	bool flag; // true se il primo è un massimo
-
 	if ((scan_profile.at<float>(cross[0])) < threshold) { // cerchiamo un massimo
 		int tp = 0;
 		flag = true;
@@ -577,9 +608,8 @@ void scan_images(Mat src, vector<Point> harris_points) {
 			}
 		}
 		estremi.push_back(tp);
-
 	}
-	else {																 // cerchiamo un minimo
+	else {	 // cerchiamo un minimo
 		int tp = 255;
 		flag = false;
 		for (int i = 0; i < cross[0]; i++) {
@@ -589,6 +619,9 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		}
 		estremi.push_back(tp);
 	}
+
+
+	// intervallo: tra due cross
 	for (int i = 0; i < cross.size() - 1; i++) {
 		int t_max = 0, t_min = 255;
 		for (int j = cross[i]; j < cross[i + 1]; j++) {
@@ -608,10 +641,10 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		flag = !flag;
 	}
 
-	//ultimo elemento
+	//ultimo intervallo: cross[ultimo] - fine barcode
 	if (flag) {
 		int tp = 0;
-		for (int i = cross[cross.size() - 1]; i < w; i++) {
+		for (int i = cross[cross.size() - 1]; i < working.cols; i++) {
 			if (scan_profile.at<float>(i) > tp) {
 				tp = scan_profile.at<float>(i);
 				//cout << scan_profile.at<float>(i) << endl;
@@ -620,9 +653,9 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		estremi.push_back(tp);
 
 	}
-	else {																 // cerchiamo un minimo
+	else {	 // cerchiamo un minimo
 		int tp = 255;
-		for (int i = cross[cross.size() - 1]; i < w; i++) {
+		for (int i = cross[cross.size() - 1]; i < working.cols; i++) {
 			if (scan_profile.at<float>(i) < tp) {
 				tp = scan_profile.at<float>(i);
 			}
@@ -678,7 +711,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	if ((scan_profile.at<float>(cross[cross.size() - 1])) > threshold) { // cerchiamo un picco di minimo nel massimo
 		int t_min = 0;
 		flag = true;
-		for (int j = cross[cross.size() - 1] + 1; j < w - 1; j++) {
+		for (int j = cross[cross.size() - 1] + 1; j < working.cols - 1; j++) {
 			if ((scan_profile.at<float>(j) <= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) <= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) > t_min)) {
 				t_min = scan_profile.at<float>(j);
 			}
@@ -688,7 +721,7 @@ void scan_images(Mat src, vector<Point> harris_points) {
 	else {																 // cerchiamo un picco di massimo nel minimo
 		int t_max = 255;
 		flag = false;
-		for (int j = cross[cross.size() - 1] + 1; j < w - 1; j++) {
+		for (int j = cross[cross.size() - 1] + 1; j < working.cols - 1; j++) {
 
 			if ((scan_profile.at<float>(j) >= scan_profile.at<float>(j - 1)) && (scan_profile.at<float>(j) >= scan_profile.at<float>(j + 1)) && (scan_profile.at<float>(j) < t_max)) {
 				t_max = scan_profile.at<float>(j);
@@ -704,18 +737,18 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		if (x < ECmin) ECmin = x;
 
 	}
-	cout << "ECmin " << ECmin << endl;
+	cout << "Min Edge Contrast (ECmin): " << ECmin << endl;
 
 
 	//SYMBOL CONTRAST
 	symbol_contrast = Rmax - Rmin;
 	float symbol_contrast_perc = ((Rmax - Rmin) / 255) * 100;
-	cout << "Symbol Constrast " << symbol_contrast << endl;
-	cout << "Symbol Constrast perc " << symbol_contrast_perc << endl;
+	cout << "Symbol Constrast (SC): " << symbol_contrast << endl;
+	cout << "Symbol Constrast (%): " << symbol_contrast_perc << endl;
 
 	//MODULATION
 	modulation = ECmin / symbol_contrast;
-	cout << "Modulation " << modulation << endl;
+	cout << "Modulation: " << modulation << endl;
 
 
 
@@ -734,21 +767,15 @@ void scan_images(Mat src, vector<Point> harris_points) {
 		if (ern[i] > t) t = ern[i];
 	}
 	int max_ern = t;
-	cout << "max ern " << max_ern << endl;
+	cout << "Max Ern: " << max_ern << endl;
 
 	float defect = max_ern / symbol_contrast;
-	cout << "defect " << defect << endl;
+	cout << "Defect (ERN): " << defect << endl;
 
-	imshow("crop", working);
-
-	/*
-	for (int i = 0; i< 10; i++)
-	{
-	imshow("crop", crop_images[i]);
-	waitKey(-30);
-	}
-	*/
+	//imshow("crop", working);
 
 
 
+	vector<float> vec = {number_edges, Rmin, Rmax, ECmin, symbol_contrast, modulation, defect };
+	return vec;
 }
