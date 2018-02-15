@@ -15,7 +15,7 @@ using namespace std;
 void drawing_box(Mat dst, vector<Point> points);
 Mat rotation_image(Mat src, float angle_rotation);
 tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag);
-int counter_tickness_bars(Mat img, vector<float> px);
+int counter_thickness_bars(Mat img, vector<float> px);
 vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap);
 vector<float> FirstLastDetector(vector<Vec4i> r_lines);
 Mat clahe(Mat bgr_image);
@@ -27,6 +27,8 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height);
 vector<float> scan_images(Mat src);
 void scan_images_average(Mat src, vector<Point> harris_points);
 float edges_counter(Mat src);
+
+vector <float> scan_parameters(Mat working);
 
 
 
