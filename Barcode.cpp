@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
 
 
-			//line = "UPC#08" ;
+			//line = "C128_7.5LOW" ;
 			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
@@ -131,6 +131,7 @@ int main(int argc, char** argv)
 			vector<float> y_coord = Harris(rotated_barcode, points_updated, &height);
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
 			vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0] - 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
+			//vector <Point> harris_points = { Point(px[0] - X, y_coord[0] - X), Point(px[0] - X, y_coord[1] + X), Point(px[1] + X, y_coord[1] + X), Point(px[1] + X, y_coord[0] - X) };
 			drawing_box(rotated_barcode, harris_points);
 
 
@@ -139,6 +140,7 @@ int main(int argc, char** argv)
 			//writeFile(data, line);
 			//imshow("scan image", scan_image);
 
+			cout << "Image: " << line << endl;
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
 			namedWindow("BOUNDING BOX FINAL", CV_WINDOW_AUTOSIZE);
 			imshow("BOUNDING BOX FINAL", rotated_barcode);
