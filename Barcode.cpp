@@ -36,8 +36,8 @@ int main(int argc, char** argv)
 
 
 
-			//Mat src = imread("data/" + line + ".bmp", 1);
-			Mat src = imread("data/UPC#08.bmp", 1);
+			line = "UPC#08" ;
+			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
 			cout << "IMAGE: " << line << endl;
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 			bool flag_gauss;
 			tie(r_lines, angle_rotation) = barcode_orientation(dst, &flag_gauss);
 			//cout << "angle rotation" << angle_rotation << endl;
-			
+
 
 
 			// ROTATION OF THE IMAGE
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
 			int height;
 			vector<float> y_coord = Harris(rotated_barcode, points_updated, &height);
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
-			vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0]- 10 * X, y_coord[1]+ X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
+			vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0] - 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
 			drawing_box(rotated_barcode, harris_points);
 
 
@@ -163,9 +163,9 @@ int writeFile(vector <float> data, string line)
 	myfile.open("data/result.txt", ios_base::app);
 	myfile << line;
 	myfile << ":\t";
-	myfile << data[0]*255;
-	myfile <<  "\t";
-	myfile << data[1]*255;
+	myfile << data[0] * 255;
+	myfile << "\t";
+	myfile << data[1] * 255;
 	myfile << "\t";
 	myfile << data[2];
 	myfile << "\t";
