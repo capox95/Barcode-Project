@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
 
 
-			line = "UPC#08" ;
+			//line = "UPC#08" ;
 			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
