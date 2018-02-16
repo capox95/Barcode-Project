@@ -35,3 +35,4 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points);
 
 #endif
 #pragma once
+
