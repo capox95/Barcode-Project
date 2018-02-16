@@ -19,7 +19,7 @@ using namespace std;
 //gap verticale da rivedere
 //EAN128 - MASTER IMGB
 
-
+int writeFile(vector <float> data, string line);
 
 
 
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 
 
 			//Mat src = imread("data/" + line + ".bmp", 1);
-			Mat src = imread("data/C128_7.5UP.bmp", 1);
+			Mat src = imread("data/UPC#08.bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
 			cout << "IMAGE: " << line << endl;
@@ -135,8 +135,8 @@ int main(int argc, char** argv)
 
 
 
-
-			scan_images_average(scan_image, harris_points);
+			vector <float> data = scan_images_average(scan_image, harris_points);
+			//writeFile(data, line);
 			//imshow("scan image", scan_image);
 
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
@@ -152,5 +152,26 @@ int main(int argc, char** argv)
 	else cout << "Unable to open file";
 
 
+	return 0;
+}
+
+
+
+int writeFile(vector <float> data, string line)
+{
+	ofstream myfile;
+	myfile.open("data/result.txt", ios_base::app);
+	myfile << line;
+	myfile << ":\t";
+	myfile << data[0]*255;
+	myfile <<  "\t";
+	myfile << data[1]*255;
+	myfile << "\t";
+	myfile << data[2];
+	myfile << "\t";
+	myfile << data[3];
+	myfile << "\t";
+	myfile << data[4];
+	myfile << "\n";
 	return 0;
 }
