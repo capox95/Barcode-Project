@@ -25,10 +25,11 @@ void plot_histogram(Mat Hist, int histSize);
 vector<float> Harris(Mat src, vector<Point> roi, int *height);
 
 vector<float> scan_images(Mat src);
-void scan_images_average(Mat src, vector<Point> harris_points);
 float edges_counter(Mat src);
 
 vector <float> scan_parameters(Mat working);
+vector <float> scan_images_average(Mat src, vector<Point> harris_points);
+
 
 
 
