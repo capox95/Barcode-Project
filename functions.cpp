@@ -503,8 +503,8 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 	int space = (h / 11);
 	int w = harris_points[2].x - harris_points[0].x;
 
-	float Number_Edges = 0, Rmin = 0, Rmax = 0, ECmin = 0, SC = 0, Mod = 0, Def = 0;
-	
+	float Number_Edges = 0, Rmin = 0, Rmax = 0, ECmin = 0, SC = 0, Mod = 0, Def = 0, TH = 0;
+
 	// VETTORE CON LE COORDINATE DELLE SCAN PROFILES (Y)
 	int update = harris_points[0].y + space;
 	vector <int> coord;
@@ -532,33 +532,23 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 	}
 
 
-	
-	
+
+
 	for (int i = 0; i < 10; i++) {
-			vector<float> result = scan_parameters(scan[i]);
-			Rmin += result[0];
-			Rmax += result[1];
-			SC += result[2];
-			ECmin += result[3];
-			Mod += result[4];
-		
-	}
+		vector<float> result = scan_parameters(scan[i]);
+		Rmin += result[0];
+		Rmax += result[1];
+		SC += result[2];
+		ECmin += result[3];
+		Mod += result[4];
+		TH += result[5];
 
 
-
-	int hist_w = scan_profiles.cols; int hist_h = 255;
-	int bin_w = cvRound((double)hist_w / scan_profiles.cols);
-	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
-	for (int i = 1; i < scan_profiles.cols; i++)
-	{
-		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(scan[8].at<float>(i - 1))), Point(bin_w*(i), hist_h - cvRound(scan[8].at<float>(i))), Scalar(255, 0, 0), 1, 1, 0);
 	}
 
 
 
 
-
-	imshow("Result", histImage);
 
 
 
@@ -567,6 +557,7 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 	SC = SC / 10;
 	ECmin = ECmin / 10;
 	Mod = Mod / 10;
+	TH = TH / 10;
 
 
 
@@ -579,8 +570,28 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 	cout << "ECmin " << ECmin << endl;
 	cout << "Mod " << Mod << endl;
 
-	cout << "Rmin value " << (Rmin *255)  << endl;
-	cout << "Rmax value " << (Rmax *255)  << endl;
+	cout << "Rmin value " << (Rmin * 255) << endl;
+	cout << "Rmax value " << (Rmax * 255) << endl;
+	cout << "Global Threshold " << TH << endl;
+
+
+	int hist_w = scan_profiles.cols; int hist_h = 255;
+	int bin_w = cvRound((double)hist_w / scan_profiles.cols);
+	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
+	for (int i = 1; i < scan_profiles.cols; i++)
+	{
+		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(scan[8].at<float>(i - 1))), Point(bin_w*(i), hist_h - cvRound(scan[8].at<float>(i))), Scalar(255, 0, 0), 1, 1, 0);
+	}
+
+	cvtColor(histImage, histImage, CV_GRAY2RGB);
+	for (int i = 0; i < histImage.cols; i++) {
+		circle(histImage, Point(i, TH), 1, Scalar(0, 0, 255), 1, 1, 0);
+	}
+
+	imshow("Result", histImage);
+
+
+
 
 
 	vector <float> data = { Rmin, Rmax, SC, ECmin, Mod };
@@ -825,7 +836,7 @@ vector<float> scan_images(Mat working) {
 
 vector <float> scan_parameters(Mat scan) {
 
-	
+
 	//REFLECTANCE
 	float Rmax = 0, Rmin = 255;
 	for (int i = 0; i < scan.cols; i++) {
@@ -850,9 +861,9 @@ vector <float> scan_parameters(Mat scan) {
 	float gt = Rmin + symbol_contrast / 2;
 	cout << "Global Threshold: " << gt << endl;
 
-	
+
 	//MIN EDGE CONTRAST - ECMIN
-	float threshold = gt*255;
+	float threshold = gt * 255;
 	cout << "Threshold: " << threshold << endl;
 
 
@@ -867,9 +878,9 @@ vector <float> scan_parameters(Mat scan) {
 		}
 	}
 
-	
+
 	vector <float> estremi, local_estremi;
-	
+
 	// intervallo: inizio barcode - cross[0] 
 	bool flag; // true se il primo è un massimo
 	if ((scan.at<float>(cross[0])) < threshold) { // cerchiamo un massimo
@@ -878,25 +889,25 @@ vector <float> scan_parameters(Mat scan) {
 	}
 	else flag = false;
 	/*	for (int i = 0; i < cross[0]; i++) {
-			if (scan_profile.at<uchar>(i) > tp) {
-				tp = scan_profile.at<uchar>(i);
-			}
-		}
-		estremi.push_back(tp);
+	if (scan_profile.at<uchar>(i) > tp) {
+	tp = scan_profile.at<uchar>(i);
+	}
+	}
+	estremi.push_back(tp);
 	}
 	else {	 // cerchiamo un minimo
-		int tp = 255;
-		flag = false;
-		for (int i = 0; i < cross[0]; i++) {
-			if (scan_profile.at<uchar>(i) < tp) {
-				tp = scan_profile.at<uchar>(i);
-			}
-		}
-		estremi.push_back(tp);
+	int tp = 255;
+	flag = false;
+	for (int i = 0; i < cross[0]; i++) {
+	if (scan_profile.at<uchar>(i) < tp) {
+	tp = scan_profile.at<uchar>(i);
+	}
+	}
+	estremi.push_back(tp);
 	}
 
 
-	
+
 
 	*/
 
@@ -926,34 +937,34 @@ vector <float> scan_parameters(Mat scan) {
 		}
 		flag = !flag;
 	}
-	
+
 	/*
 	//ultimo intervallo: cross[ultimo] - fine barcode
 	if (flag) {
-		int tp = 0;
-		for (int i = cross[cross.size() - 1]; i < working.cols; i++) {
-			if (scan.at<float>(i) > tp) {
-				tp = scan.at<float>(i);
-				//cout << scan_profile.at<float>(i) << endl;
-			}
-		}
-		estremi.push_back(tp);
+	int tp = 0;
+	for (int i = cross[cross.size() - 1]; i < working.cols; i++) {
+	if (scan.at<float>(i) > tp) {
+	tp = scan.at<float>(i);
+	//cout << scan_profile.at<float>(i) << endl;
+	}
+	}
+	estremi.push_back(tp);
 
 	}
 	else {	 // cerchiamo un minimo
-		int tp = 255;
-		for (int i = cross[cross.size() - 1]; i < scan.cols; i++) {
-			if (scan.at<float>(i) < tp) {
-				tp = scan.at<float>(i);
-			}
-		}
-		estremi.push_back(tp);
+	int tp = 255;
+	for (int i = cross[cross.size() - 1]; i < scan.cols; i++) {
+	if (scan.at<float>(i) < tp) {
+	tp = scan.at<float>(i);
+	}
+	}
+	estremi.push_back(tp);
 
 	}
 	//cout << "estremi ultimo " << estremi[estremi.size() -1] << endl;
 	*/
-	
-	
+
+
 
 	float ECmin = 255;
 	int x_i;
@@ -977,7 +988,7 @@ vector <float> scan_parameters(Mat scan) {
 	cout << "Modulation: " << modulation << endl;
 
 
-	vector <float> result = { Rmin, Rmax, symbol_contrast, ECmin, modulation };
+	vector <float> result = { Rmin, Rmax, symbol_contrast, ECmin, modulation, threshold };
 
 	return result;
 }
