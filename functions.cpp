@@ -545,12 +545,7 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 
 
 	}
-
-
-
-
-
-
+	
 
 	Rmin = Rmin / 10;
 	Rmax = Rmax / 10;
@@ -564,19 +559,21 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 	// media di ogni valore;
 	cout << endl;
 	cout << "MEAN VALUES " << endl;
-	cout << "Rmin " << Rmin << endl;
-	cout << "Rmax " << Rmax << endl;
-	cout << "SC " << SC << endl;
-	cout << "ECmin " << ECmin << endl;
-	cout << "Mod " << Mod << endl;
-
-	cout << "Rmin value " << (Rmin * 255) << endl;
-	cout << "Rmax value " << (Rmax * 255) << endl;
+	cout << "Rmin " << Rmin*255 << endl;
+	cout << "Rmax " << Rmax*255 << endl;
+	cout << "SC " << SC*100 << "%" << endl;
+	cout << "ECmin " << ECmin*255 << "%" << endl;
+	cout << "Mod " << Mod*100 << "%" << endl;
 	cout << "Global Threshold " << TH << endl;
 
+	vector <float> data = { Rmin, Rmax, SC, ECmin, Mod };
 
-	int hist_w = scan_profiles.cols; int hist_h = 255;
-	int bin_w = cvRound((double)hist_w / scan_profiles.cols);
+
+
+
+	// CODICE DI TEST SU UNA SOLA SCAN PROFILE LINE
+	int hist_w = scan[8].cols; int hist_h = 255;
+	int bin_w = cvRound((double)hist_w / scan[8].cols);
 	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
 	for (int i = 1; i < scan_profiles.cols; i++)
 	{
@@ -585,16 +582,16 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 
 	cvtColor(histImage, histImage, CV_GRAY2RGB);
 	for (int i = 0; i < histImage.cols; i++) {
-		circle(histImage, Point(i, TH), 1, Scalar(0, 0, 255), 1, 1, 0);
+		int threshold =((Rmax + Rmin)*255) / 2;
+		circle(histImage, Point(i, 255 - threshold), 1, Scalar(0, 0, 255), 1, 1, 0);
+		circle(histImage, Point(i, 255 - Rmax*255), 1, Scalar(255, 0, 0), 1, 1, 0);
+		circle(histImage, Point(i, 255 - Rmin*255), 1, Scalar(0, 255, 0), 1, 1, 0);
 	}
 
-	imshow("Result", histImage);
+	imshow("Threshold = RED, Rmax = BLUE, Rmin = GREEN", histImage);
 
+	
 
-
-
-
-	vector <float> data = { Rmin, Rmax, SC, ECmin, Mod };
 	return  data;
 }
 
