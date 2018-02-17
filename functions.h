@@ -22,7 +22,7 @@ Mat clahe(Mat bgr_image);
 vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src);
 int clahe_detector(Mat src);
 void plot_histogram(Mat Hist, int histSize);
-vector<float> Harris(Mat src, vector<Point> roi, int *height);
+vector<int> Harris(Mat src, vector<Point> roi);
 
 vector<float> scan_images(Mat src);
 float edges_counter(Mat src);
@@ -35,4 +35,3 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points);
 
 #endif
 #pragma once
-
