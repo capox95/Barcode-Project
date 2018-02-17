@@ -379,14 +379,14 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src) {
 }
 
 
-vector<float> Harris(Mat src, vector<Point> roi, int *height) {
+vector<int> Harris(Mat src, vector<Point> roi) {
 
 	Point corner = roi[0];
 	int h = roi[1].y - roi[3].y; // rows - height
 	int x = roi[2].x - roi[0].x; // columns - width
 
 
-								 //ROI E CROP DELL'IMMAGINE
+	 //ROI E CROP DELL'IMMAGINE
 	Rect myroi(corner.x, corner.y, x, h);
 	Mat crop_image = src(myroi);
 	Mat crop_bk = crop_image.clone();
@@ -402,7 +402,7 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	{
 		for (int i = 0; i < dst_norm.cols; i++)
 		{
-			if ((int)dst_norm.at<float>(j, i) > 127)
+			if ((int)dst_norm.at<float>(j, i) > 115)
 			{
 				circle(dst_norm_scaled, Point(i, j), 5, Scalar(0), 2, 8, 0);
 				corners.push_back(Point(i, j));
@@ -412,22 +412,40 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 
 
 	//imshow("crop", dst_norm_scaled);
-	vector<Point> top, bottom;
+	vector<Point> top, bottom, middle;
 	cvtColor(crop_bk, crop_bk, CV_GRAY2RGB);
 
-	//HARRIS CORNERS DIVISI TRA BOTTOM E TOP CERCANDO IN UNA FASCIA DI PIXELS UGUALE AD 1/5 DEL NUMERO TOTALE DI COLONNE
+	//HARRIS CORNERS DIVISI TRA BOTTOM E TOP CERCANDO IN UNA FASCIA DI PIXELS UGUALE AD 1/5 DEL NUMERO TOTALE DI RIGHE
 	for (int i = 0; i < corners.size(); i++) {
 		if (corners[i].y < crop_bk.rows / 5) {
 			top.push_back(corners[i]);
-			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
+			//circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
 		}
 		else if (corners[i].y > 4 * crop_bk.rows / 5) {
 			bottom.push_back(corners[i]);
 			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
 		}
+		else {
+			middle.push_back(corners[i]);
+			circle(crop_bk, Point(corners[i]), 2, Scalar(255, 0, 0), 1);
+		}
 	}
 
-	//CORRISPONDENZE TRA TOP E BOTTOM PER OTTENERE UNA PRIMA SELEZIONE
+
+	//SELEZIONE PER TOGLIERE LA PRIMA E ULTIMA RIGA SPEZZATA PRESENTE IN ALCUNI BARCODE
+	for (int i = 0; i < middle.size(); i++) {
+		for (int j = 0; j < bottom.size(); j++) {
+			if ((bottom[j].x <= middle[i].x + 1) && (bottom[j].x >= middle[i].x - 1)) {
+				bottom[j].x = crop_image.cols / 2;
+				circle(crop_bk, Point(bottom[j]), 2, Scalar(255, 0, 255), 1);
+
+			}
+		}
+	}
+
+
+
+	//CORRISPONDENZE TRA TOP E BOTTOM
 	vector<Point> result_top, result_bot;
 	for (int i = 0; i < top.size(); i++) {
 		for (int j = 0; j < bottom.size(); j++) {
@@ -440,7 +458,7 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 		}
 	}
 
-
+	
 	// ALTEZZA MINIMA BARCODE
 	int min = crop_image.rows;
 	int riga = 0;
@@ -451,8 +469,9 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 			riga = i;
 		}
 	}
+
 	//DISPLAY DELLA LINEA DOVE E' STATA CALCOLATA L'ALEZZA MINIMA
-	//line(crop_bk, result_top[riga], result_bot[riga], Scalar(0, 255, 0), 3, CV_AA);
+	line(crop_bk, result_top[riga], result_bot[riga], Scalar(0, 255, 0), 3, CV_AA);
 
 
 	//CALCOLO VALORI Y (MIN E MAX) DA USARE PER IL BOUNDING BOX
@@ -464,14 +483,22 @@ vector<float> Harris(Mat src, vector<Point> roi, int *height) {
 	}
 
 
+	int x_max = 0, x_min = crop_image.cols;
+	for (int i = 0; i < result_bot.size(); i++) {
+		if (result_bot[i].x < x_min) x_min = result_bot[i].x;
+		if (result_bot[i].x > x_max) x_max = result_bot[i].x;
+	}
+
 	//TRASLAZIONE PER MUOVERSI DAL CROP ALL'IMMAGINE ORIGINALE
-	*height = min;
-	vector<float> result;
-	result.push_back(top_y_min + corner.y);
-	result.push_back(bot_y_min + corner.y);
+
+	int point_x = x_min + corner.x;
+	int point_y = top_y_min + corner.y;
+	int height = min;
+	int width = x_max - x_min;
 
 
-	//imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
+	vector<int> result = { point_x, point_y, height, width };
+	imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
 
 
 	return result;
@@ -596,10 +623,6 @@ vector <float> scan_images_average(Mat src, vector<Point> harris_points) {
 
 	return  data;
 }
-
-
-
-
 
 
 
@@ -1015,3 +1038,5 @@ vector <float> scan_parameters(Mat scan) {
 
 	return result;
 }
+
+
