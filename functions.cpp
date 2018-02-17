@@ -402,7 +402,7 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	{
 		for (int i = 0; i < dst_norm.cols; i++)
 		{
-			if ((int)dst_norm.at<float>(j, i) > 115)
+			if ((int)dst_norm.at<float>(j, i) > 127)
 			{
 				circle(dst_norm_scaled, Point(i, j), 5, Scalar(0), 2, 8, 0);
 				corners.push_back(Point(i, j));
@@ -432,16 +432,6 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	}
 
 
-	//SELEZIONE PER TOGLIERE LA PRIMA E ULTIMA RIGA SPEZZATA PRESENTE IN ALCUNI BARCODE
-	for (int i = 0; i < middle.size(); i++) {
-		for (int j = 0; j < bottom.size(); j++) {
-			if ((bottom[j].x <= middle[i].x + 1) && (bottom[j].x >= middle[i].x - 1)) {
-				bottom[j].x = crop_image.cols / 2;
-				circle(crop_bk, Point(bottom[j]), 2, Scalar(255, 0, 255), 1);
-
-			}
-		}
-	}
 
 
 
@@ -483,21 +473,10 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	}
 
 
-	int x_max = 0, x_min = crop_image.cols;
-	for (int i = 0; i < result_bot.size(); i++) {
-		if (result_bot[i].x < x_min) x_min = result_bot[i].x;
-		if (result_bot[i].x > x_max) x_max = result_bot[i].x;
-	}
-
 	//TRASLAZIONE PER MUOVERSI DAL CROP ALL'IMMAGINE ORIGINALE
-
-	int point_x = x_min + corner.x;
-	int point_y = top_y_min + corner.y;
-	int height = min;
-	int width = x_max - x_min;
-
-
-	vector<int> result = { point_x, point_y, height, width };
+	vector<int> result;
+	result.push_back(top_y_min + corner.y);
+	result.push_back(bot_y_min + corner.y);
 	imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
 
 
@@ -1040,3 +1019,87 @@ vector <float> scan_parameters(Mat scan) {
 }
 
 
+
+
+vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hough) {
+
+	Point corner = roi[0];
+	int h = roi[1].y - roi[3].y; // rows - height
+	int x = roi[2].x - roi[0].x; // columns - width
+
+	//ROI E CROP DELL'IMMAGINE
+	Rect myroi(corner.x, corner.y, x, h);
+	Mat crop_image = src(myroi);
+	//cvtColor(crop_image, crop_image, CV_RGB2GRAY);
+
+
+	//CREAZIONE DI DUE MAT RIGA
+	int line_top = crop_image.rows / 3;
+	int line_bottom = 2 * crop_image.rows / 3;
+	Mat scan_top = Mat::zeros(1, crop_image.cols, CV_8U);
+	Mat scan_bottom = Mat::zeros(1, crop_image.cols, CV_8U);
+	for (int i = 0; i < scan_top.cols; i++) {
+		scan_top.at<uchar>(i) = crop_image.at<uchar>(line_top, i);
+		scan_bottom.at<uchar>(i) = crop_image.at<uchar>(line_bottom, i);
+	}
+
+	//DENTRO INDEX AGGIUNGO SOLO LE COLONNE CON BARRE INTERE SU TUTTA LA LUNGHEZZA CROP
+	vector <int> index;
+	for (int i = 0; i < scan_top.cols - 2; i++) {
+		int vt = scan_top.at<uchar>(i);
+		int vb = scan_bottom.at<uchar>(i);
+		int vt2 = scan_top.at<uchar>(i + 2);
+		int vb2 = scan_bottom.at<uchar>(i + 2);
+		if ((vt < 127) || (vb < 127)) {
+			if ((abs(vt - vb) <= 5) && (abs(vt2 - vb2) <= 5)) index.push_back(i);
+
+		}
+	}
+
+	//VETTORE CONTENENTE I VALORI XMAX E XMIN GIà CORRETTI PER QUANTO RIGUARDA IL CROP DELL'IMMAGINE
+	vector <int> X;
+	X.push_back(index[0] + corner.x);
+	X.push_back(index[index.size() - 1] + corner.x);
+	bool flag0 = false, flag1 = false;
+	int t = 0, s = 0;
+	
+	cout << "X min " << X[0] << endl;
+	cout << "X max " << X[1] << endl;
+	
+
+	//DOUBLE CHECK CON LE HOUGH LINES PER SCEGLIERE LA PRIMA E ULTIMA BARRA DEL BARCODE (aggiunge robustezza nel caso di noise (UPC#07))
+	for (int i = 0; i < hough.size(); i++) {
+		if (abs(hough[i][0] - X[0]) <= 2) flag0 = true;
+		if (abs(hough[i][0] - X[1]) <= 2) flag1 = true;
+	}
+	
+	while(!flag0 || !flag1){
+		if (!flag0) {
+			X[0] = index[t + 1] + corner.x;
+			for (int i = 0; i < hough.size(); i++) {
+				if (abs(hough[i][0] - X[0]) <= 2) flag0 = true;
+			}
+		}
+		else if (!flag1) {
+			X[1] = index[index.size() - 1 - s] + corner.x;
+			for (int i = 0; i < hough.size(); i++) {
+				if (abs(hough[i][0] - X[1]) <= 2) flag0 = true;
+			}
+		}
+		t++;
+		s++;
+		cout << "X min updated " << X[0] << endl;
+		cout << "X max updated " << X[1] << endl;
+	}  
+
+	//DISEGNO SOLO PER DEBUGGING
+	cvtColor(crop_image, crop_image, CV_GRAY2RGB);
+	for (int i = 0; i < index.size(); i++) {
+		circle(crop_image, Point(index[i], crop_image.rows / 2), 1, Scalar(0, 255, 0), 2, 1, 0);
+	}
+	line(crop_image, Point(X[0]-corner.x, 0), Point(X[0]-corner.x, h), Scalar(0, 0, 255), 5, CV_AA);
+	line(crop_image, Point(X[1]-corner.x, 0), Point(X[1]-corner.x, h), Scalar(0, 0, 255), 5, CV_AA);
+	//imshow("crop image broken lines removal", crop_image);
+		
+	return X;
+}
