@@ -30,7 +30,7 @@ float edges_counter(Mat src);
 vector <float> scan_parameters(Mat working);
 vector <float> scan_images_average(Mat src, vector<Point> harris_points);
 
-
+vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hough);
 
 
 #endif
