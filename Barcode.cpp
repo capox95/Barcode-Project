@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
 
 
-			line = "UPC#01" ;
+			//line = "UPC#07" ;
 			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
@@ -101,12 +101,7 @@ int main(int argc, char** argv)
 			vector<Vec4i> barcode_lines2 = vertical_gap(barcode_lines, rotated_barcode);
 			vector <float> px = FirstLastDetector(barcode_lines2); //obtain initial and final bar
 
-			
-			//vector <Vec4i> barcode_lines = horizontal_gap(r_lines2, rotated_barcode);
-
-
-
-			
+						
 
 		    // BINARIZATION OF THE IMAGE
 			Mat binary = rotated_barcode.clone();
@@ -123,22 +118,27 @@ int main(int argc, char** argv)
 			// BOUNDING BOX DRAWING
 			//vector containing the four corners for the bounding box, in order: top_left, bottom_left, bottom_right, top_right
 			vector <Point> points = { Point(px[0], px[2]), Point(px[0], px[3]), Point(px[1], px[3]), Point(px[1], px[2]) };
+			vector <Point> points_updated = { Point(px[0] - 10 * X, px[2] - X), Point(px[0] - 10 * X, px[3] + X), Point(px[1] + 10 * X, px[3] + X), Point(px[1] + 10 * X, px[2] - X) };
+			
+			// FUNCTION TO REMOVE THE BROKEN LINES
+			vector <int> x_bb = broken_lines_removal(binary, points_updated, barcode_lines2);
+
+			
 			drawing_box(binary, points);
 			cvtColor(binary, binary, CV_GRAY2RGB);
-			vector <Point> points_updated = { Point(px[0] - 10 * X, px[2] - X), Point(px[0] - 10 * X, px[3] + X), Point(px[1] + 10 * X, px[3] + X), Point(px[1] + 10 * X, px[2] - X) };
 			drawing_box(binary, points_updated);
 			imshow("binarized image with bounding box", binary);
 
-			
 
 			//HARRIS vector<Point> Harris(Mat src, vector<Point> roi);
 			cvtColor(rotated_barcode, rotated_barcode, CV_RGB2GRAY);
-			vector<int> box_coords = Harris(rotated_barcode, points_updated);
+			vector<int> y_coord = Harris(rotated_barcode, points_updated);
+			
+
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
-			vector <Point> harris_points = { Point(box_coords[0]-10*X, box_coords[1]-X), Point(box_coords[0] - 10 * X, box_coords[1] + box_coords[2] + X), Point(box_coords[0] + box_coords[3] + 10 * X, box_coords[1] + box_coords[2] + X), Point(box_coords[0] + box_coords[3]+10*X, box_coords[1]-X),  };
-			//vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0] - 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
-			//vector <Point> harris_points = { Point(px[0] - X, y_coord[0] - X), Point(px[0] - X, y_coord[1] + X), Point(px[1] + X, y_coord[1] + X), Point(px[1] + X, y_coord[0] - X) };
+			vector <Point> harris_points = { Point(x_bb[0] - 10 * X, y_coord[0] - X), Point(x_bb[0] - 10 * X, y_coord[1] + X), Point(x_bb[1] + 10 * X, y_coord[1] + X), Point(x_bb[1] + 10 * X, y_coord[0] - X) };
 			drawing_box(rotated_barcode, harris_points);
+
 
 
 
