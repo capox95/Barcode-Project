@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
 
 
-			//line = "C128_7.5LOW" ;
+			line = "UPC#01" ;
 			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
@@ -101,8 +101,14 @@ int main(int argc, char** argv)
 			vector<Vec4i> barcode_lines2 = vertical_gap(barcode_lines, rotated_barcode);
 			vector <float> px = FirstLastDetector(barcode_lines2); //obtain initial and final bar
 
+			
+			//vector <Vec4i> barcode_lines = horizontal_gap(r_lines2, rotated_barcode);
 
-																   // BINARIZATION OF THE IMAGE
+
+
+			
+
+		    // BINARIZATION OF THE IMAGE
 			Mat binary = rotated_barcode.clone();
 			cvtColor(binary, binary, CV_RGB2GRAY);
 			double th = threshold(binary, binary, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
@@ -121,16 +127,16 @@ int main(int argc, char** argv)
 			cvtColor(binary, binary, CV_GRAY2RGB);
 			vector <Point> points_updated = { Point(px[0] - 10 * X, px[2] - X), Point(px[0] - 10 * X, px[3] + X), Point(px[1] + 10 * X, px[3] + X), Point(px[1] + 10 * X, px[2] - X) };
 			drawing_box(binary, points_updated);
-			//imshow("binarized image with bounding box", binary);
+			imshow("binarized image with bounding box", binary);
 
-
+			
 
 			//HARRIS vector<Point> Harris(Mat src, vector<Point> roi);
 			cvtColor(rotated_barcode, rotated_barcode, CV_RGB2GRAY);
-			int height;
-			vector<float> y_coord = Harris(rotated_barcode, points_updated, &height);
+			vector<int> box_coords = Harris(rotated_barcode, points_updated);
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
-			vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0] - 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
+			vector <Point> harris_points = { Point(box_coords[0]-10*X, box_coords[1]-X), Point(box_coords[0] - 10 * X, box_coords[1] + box_coords[2] + X), Point(box_coords[0] + box_coords[3] + 10 * X, box_coords[1] + box_coords[2] + X), Point(box_coords[0] + box_coords[3]+10*X, box_coords[1]-X),  };
+			//vector <Point> harris_points = { Point(px[0] - 10 * X, y_coord[0] - X), Point(px[0] - 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[1] + X), Point(px[1] + 10 * X, y_coord[0] - X) };
 			//vector <Point> harris_points = { Point(px[0] - X, y_coord[0] - X), Point(px[0] - X, y_coord[1] + X), Point(px[1] + X, y_coord[1] + X), Point(px[1] + X, y_coord[0] - X) };
 			drawing_box(rotated_barcode, harris_points);
 
@@ -139,7 +145,7 @@ int main(int argc, char** argv)
 			vector <float> data = scan_images_average(scan_image, harris_points);
 			//writeFile(data, line);
 			//imshow("scan image", scan_image);
-
+			
 			cout << "Image: " << line << endl;
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
 			namedWindow("BOUNDING BOX FINAL", CV_WINDOW_AUTOSIZE);
