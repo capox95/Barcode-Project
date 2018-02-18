@@ -96,14 +96,13 @@ int main(int argc, char** argv)
 
 
 
-			//CANCEL VERTICAL LINES AWAY FROM THE BARCODE
+			//CANCEL LINES AWAY FROM THE BARCODE
 			vector <Vec4i> barcode_lines = gap(r_lines2, 80);
 			vector<Vec4i> barcode_lines2 = vertical_gap(barcode_lines, rotated_barcode);
 			vector <float> px = FirstLastDetector(barcode_lines2); //obtain initial and final bar
 
 						
-
-		    // BINARIZATION OF THE IMAGE
+			// BINARIZATION OF THE IMAGE
 			Mat binary = rotated_barcode.clone();
 			cvtColor(binary, binary, CV_RGB2GRAY);
 			double th = threshold(binary, binary, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
