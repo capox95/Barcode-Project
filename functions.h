@@ -24,14 +24,16 @@ int clahe_detector(Mat src);
 void plot_histogram(Mat Hist, int histSize);
 vector<int> Harris(Mat src, vector<Point> roi);
 
-vector<float> scan_images(Mat src);
-float edges_counter(Mat src);
 
-vector <float> scan_parameters(Mat working);
-vector <float> scan_images_average(Mat src, vector<Point> harris_points);
+float edges_counter(Mat src);
+vector <float> scan_parameters(Mat scan);
+Mat scan_images_average(Mat src, vector<Point> harris_points, vector <int>& grade);
 
 vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hough);
-
-
+int writeFile(string line);
+float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <int>& spaces, vector <int>& bars);
+float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<int> spaces, vector<int> bars, vector<int>& defects_space, vector<int>& defects_bar);
+int minimum_grade(vector <float> param);
+string overall_grade(vector <int> grade);
 #endif
 #pragma once
