@@ -19,9 +19,6 @@ using namespace std;
 //gap verticale da rivedere
 //EAN128 - MASTER IMGB
 
-int writeFile(vector <float> data, string line);
-
-
 
 int main(int argc, char** argv)
 {
@@ -36,7 +33,7 @@ int main(int argc, char** argv)
 
 
 
-			//line = "UPC#07" ;
+			line = "UPC#01" ;
 			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
@@ -101,8 +98,8 @@ int main(int argc, char** argv)
 			vector<Vec4i> barcode_lines2 = vertical_gap(barcode_lines, rotated_barcode);
 			vector <float> px = FirstLastDetector(barcode_lines2); //obtain initial and final bar
 
-						
-			// BINARIZATION OF THE IMAGE
+
+																   // BINARIZATION OF THE IMAGE
 			Mat binary = rotated_barcode.clone();
 			cvtColor(binary, binary, CV_RGB2GRAY);
 			double th = threshold(binary, binary, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
@@ -118,11 +115,11 @@ int main(int argc, char** argv)
 			//vector containing the four corners for the bounding box, in order: top_left, bottom_left, bottom_right, top_right
 			vector <Point> points = { Point(px[0], px[2]), Point(px[0], px[3]), Point(px[1], px[3]), Point(px[1], px[2]) };
 			vector <Point> points_updated = { Point(px[0] - 10 * X, px[2] - X), Point(px[0] - 10 * X, px[3] + X), Point(px[1] + 10 * X, px[3] + X), Point(px[1] + 10 * X, px[2] - X) };
-			
+
 			// FUNCTION TO REMOVE THE BROKEN LINES
 			vector <int> x_bb = broken_lines_removal(binary, points_updated, barcode_lines2);
 
-			
+
 			drawing_box(binary, points);
 			cvtColor(binary, binary, CV_GRAY2RGB);
 			drawing_box(binary, points_updated);
@@ -132,7 +129,7 @@ int main(int argc, char** argv)
 			//HARRIS vector<Point> Harris(Mat src, vector<Point> roi);
 			cvtColor(rotated_barcode, rotated_barcode, CV_RGB2GRAY);
 			vector<int> y_coord = Harris(rotated_barcode, points_updated);
-			
+
 
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
 			vector <Point> harris_points = { Point(x_bb[0] - 10 * X, y_coord[0] - X), Point(x_bb[0] - 10 * X, y_coord[1] + X), Point(x_bb[1] + 10 * X, y_coord[1] + X), Point(x_bb[1] + 10 * X, y_coord[0] - X) };
@@ -141,10 +138,21 @@ int main(int argc, char** argv)
 
 
 
-			vector <float> data = scan_images_average(scan_image, harris_points);
-			//writeFile(data, line);
+			vector <int> grade;
+			Mat parameters = scan_images_average(scan_image, harris_points, grade);
+			string barcode_grade = overall_grade(grade);
+
+			for (int i = 0; i < 10; i++) {
+				for (int j = 0; j < 6; j++) {
+					cout << parameters.at<float>(i, j) << endl;
+				}
+				cout << endl;
+			}
+			cout << "Barcode Grade " << barcode_grade << endl;
+
+			writeFile(barcode_grade);
 			//imshow("scan image", scan_image);
-			
+
 			cout << "Image: " << line << endl;
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
 			namedWindow("BOUNDING BOX FINAL", CV_WINDOW_AUTOSIZE);
@@ -163,22 +171,3 @@ int main(int argc, char** argv)
 }
 
 
-
-int writeFile(vector <float> data, string line)
-{
-	ofstream myfile;
-	myfile.open("data/result.txt", ios_base::app);
-	myfile << line;
-	myfile << ":\t";
-	myfile << data[0] * 255;
-	myfile << "\t";
-	myfile << data[1] * 255;
-	myfile << "\t";
-	myfile << data[2];
-	myfile << "\t";
-	myfile << data[3];
-	myfile << "\t";
-	myfile << data[4];
-	myfile << "\n";
-	return 0;
-}
