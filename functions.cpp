@@ -14,11 +14,49 @@ using namespace std;
 #define range2 20 // barcode_orientation function, counter number positive/negative results
 
 
-int writeFile(string line)
+
+
+int writeFile(struct barcode_result barcode)
 {
 	ofstream myfile;
-	myfile.open("data/result.csv", ios_base::app);
+	myfile.open("data/result.txt", ios_base::app);
 	
+	myfile << "Image: " << barcode.name << " Grade: " << barcode.grade << endl;
+	myfile << endl;
+	myfile << "Quality Parameters for each scan line: Rmin, Rmax, Symbol Contrast, ECmin, Modulation, Defects " << endl;
+	for (int i = 0; i < barcode.parameters.size(); i++) {
+		for (int j = 0; j < barcode.parameters[i].size(); j++) {
+			myfile << barcode.parameters[i][j] * 100 << "\t" << "\t" << "\t" ;
+		}
+		myfile << endl;
+	}
+	myfile << endl;
+
+	myfile << "X Dimension: " << barcode.x_dimension << endl;
+	myfile << "Height: " << barcode.height << endl;
+	myfile << "Orientation: " << barcode.orientation << endl;
+	myfile << "Bounding Box Vertexes: ";
+	for (int i = 0; i < barcode.bounding_box.size(); i++) {
+		myfile << barcode.bounding_box[i] << "\t";
+	}
+	myfile << "Center Bounding Box: " << barcode.center << endl;
+	myfile << endl;
+	myfile << "Number Edges for each scan line: ";
+	for (int i = 0; i < barcode.number_edges.size(); i++) {
+		myfile << barcode.number_edges[i] << "\t";
+	}
+	myfile << endl;
+	myfile << "Sequence bars and spaces " << endl;
+	for (int i = 0; i < barcode.sequence.size(); i++) {
+		for (int j = 0; j < barcode.sequence[i].size(); j++) {
+			myfile << barcode.sequence[i][j] << "\t";
+		}
+		myfile << endl;
+	}
+	myfile << endl;
+	myfile << endl;
+	myfile << endl;git
+
 
 	return 0;
 }
@@ -298,8 +336,8 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 	bool flag0 = false, flag1 = false;
 	int t = 0, s = 0;
 
-	cout << "X min " << X[0] << endl;
-	cout << "X max " << X[1] << endl;
+	//cout << "X min " << X[0] << endl;
+	//cout << "X max " << X[1] << endl;
 
 
 	//DOUBLE CHECK CON LE HOUGH LINES PER SCEGLIERE LA PRIMA E ULTIMA BARRA DEL BARCODE (aggiunge robustezza nel caso di noise (UPC#07))
@@ -323,8 +361,8 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 		}
 		t++;
 		s++;
-		cout << "X min updated " << X[0] << endl;
-		cout << "X max updated " << X[1] << endl;
+		//cout << "X min updated " << X[0] << endl;
+		//cout << "X max updated " << X[1] << endl;
 	}
 
 	//DISEGNO SOLO PER DEBUGGING
@@ -334,7 +372,7 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 	}
 	line(crop_image, Point(X[0] - corner.x, 0), Point(X[0] - corner.x, h), Scalar(0, 0, 255), 5, CV_AA);
 	line(crop_image, Point(X[1] - corner.x, 0), Point(X[1] - corner.x, h), Scalar(0, 0, 255), 5, CV_AA);
-	imshow("crop image broken lines removal", crop_image);
+	//imshow("crop image broken lines removal", crop_image);
 
 	return X;
 }
@@ -587,32 +625,16 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	vector<int> result;
 	result.push_back(top_y_min + corner.y);
 	result.push_back(bot_y_min + corner.y);
-	imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
+	//imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
 
 
 	return result;
 }
 
-float edges_counter(Mat src) {
-
-	//cvtColor(src, src, CV_RGB2GRAY);
-	Mat edges;
-	Canny(src, edges, 50, 150, 3, true);
-	float count_edges = 0;
-	for (int i = 0; i < edges.cols; i++) {
-		int value = edges.at<uchar>(edges.rows / 2, i);
-		if (value == 255) count_edges++;
-	}
-	cout << "Number Edges: " << count_edges << endl;
-
-	return count_edges;
-}
-
-
 
 
 //PARAMETERS CALCULATION (REFLECTANCE, CONTRAST, MODULATION, DEFECTS)
-Mat scan_images_average(Mat src, vector<Point> harris_points, vector <int>& grade) {
+vector <vector <float>> scan_images_average(Mat src, vector<Point> harris_points, vector <int>& grade, vector< vector <int> >& crosses, vector <bool>& flag) {
 
 	int h = harris_points[1].y - harris_points[0].y;
 	int space = (h / 11);
@@ -648,26 +670,35 @@ Mat scan_images_average(Mat src, vector<Point> harris_points, vector <int>& grad
 
 
 
-	vector<float> result;
-	
-	Mat parameters = Mat::zeros(10, 6, CV_32F);
+	vector <vector <float>> parameters;
 	for (int i = 0; i < 10; i++) {
-		result = scan_parameters(scan[i]);
-		grade.push_back(minimum_grade(result));
-		for (int j = 0; j < 6; j++) {
-			parameters.at<float>(i, j) = result[j];
-		}
+		parameters.push_back(scan_parameters(scan[i], crosses, flag, i));
+		grade.push_back(minimum_grade(parameters[i]));
 	}
 
+	/*
+	// CODICE DI TEST SU UNA SOLA SCAN PROFILE LINE
+	int hist_w = scan[9].cols; int hist_h = 255;
+	int bin_w = cvRound((double)hist_w / scan[9].cols);
+	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
+	for (int i = 1; i < scan_profiles.cols; i++)
+	{
+		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(scan[9].at<float>(i - 1))), Point(bin_w*(i), hist_h - cvRound(scan[9].at<float>(i))), Scalar(255, 0, 0), 1, 1, 0);
+	}
 
+	imshow("Threshold = RED, Rmax = BLUE, Rmin = GREEN", histImage);
+	*/
 
 	return parameters;
 }
 
 
-vector <float> scan_parameters(Mat scan) {
+vector <float> scan_parameters(Mat scan, vector < vector <int> >& crosses,vector <bool>& flag, int p) {
 
 	vector <float> parameters;
+	vector <int> cross;
+
+
 	//REFLECTANCE
 	float Rmax = 0, Rmin = 255;
 	for (int i = 0; i < scan.cols; i++) {
@@ -676,69 +707,78 @@ vector <float> scan_parameters(Mat scan) {
 		if (temp < Rmin) Rmin = temp;
 	}
 
-	cout << "Max Reflectance: " << Rmax << endl;
-	cout << "Min Reflectance: " << Rmin << endl;
 	Rmax = Rmax / 256;
 	Rmin = Rmin / 256;
 	parameters.push_back(Rmin);
 	parameters.push_back(Rmax);
+	//cout << "Max Reflectance: " << Rmax << endl;
+	//cout << "Min Reflectance: " << Rmin << endl;
 	
+	
+	//SYMBOL CONTRAST
 	float symbol_contrast = Rmax - Rmin;
-	cout << "Symbol Contast: " << symbol_contrast << endl;
 	parameters.push_back(symbol_contrast);
+	//cout << "Symbol Contast: " << symbol_contrast << endl;
 
+
+	//GLOBAL THRESHOLD
 	float gt = Rmin + symbol_contrast / 2;
-	cout << "Global Threshold: " << gt << endl;
+	//cout << "Global Threshold: " << gt << endl;
 
 
-	//MIN EDGE CONTRAST - ECMIN
+
 	float threshold = gt * 255;
-	cout << "Threshold: " << threshold << endl;
+	//cout << "Threshold: " << threshold << endl;
 
 
-	vector<int> cross;
 	for (int i = 1; i < scan.cols; i++) {
 		float temp = scan.at<float>(i);
 		float temp0 = scan.at<float>(i - 1);
-		//cout << "scan profile " << i << " values "<< temp << endl;
 		if (((temp >= threshold) && (temp0 < threshold)) || ((temp <= threshold) && (temp0 > threshold))) {
 			cross.push_back(i);
-			//circle(working, Point(i,working.rows/2), 1, Scalar(0, 0, 255), 1);
+
 		}
 	}
-	cout << "cross vector size (edge counter) " << cross.size() << endl;
+	//NUMBER EDGES
+	float number_edges = cross.size();
+	//cout << "number edges: " << number_edges << endl;
 
 
-	// ECMIN
+
+	//MIN EDGE CONTRAST - ECMIN
 	vector <int> spaces, bars;
 	float ECmin = ecmin_calculation(cross, scan, threshold, spaces, bars);
 
 	ECmin = ECmin / 256;
-	cout << "ECmin " << ECmin << endl;
-	
 	parameters.push_back(ECmin);
-	
-	float Modulation = (ECmin) / symbol_contrast;
-	cout << "Modulation " << Modulation * 100 << "%"<< endl;
-	
+	//cout << "ECmin " << ECmin << endl;
+
+
+	//MODULATION
+	float Modulation = (ECmin) / symbol_contrast;	
 	parameters.push_back(Modulation);
+	//cout << "Modulation " << Modulation * 100 << "%" << endl;
+
+
+
+	//ERN
+	vector<int> defects_space, defects_bar;
+	float ERNmax = ernmax_calculation(scan, cross, threshold, spaces, bars, defects_space, defects_bar);	
+	//cout << "ERN Max " << ERNmax << endl;
 
 
 	//DEFECTS
-	vector<int> defects_space, defects_bar;
-
-	float ERNmax = ernmax_calculation(scan, cross, threshold, spaces, bars, defects_space, defects_bar);	
-	cout << "ERN Max " << ERNmax << endl;
-
 	float Defects = (ERNmax / 256) / symbol_contrast;
-	cout << "Defects " << Defects * 100 << "%" << endl;
-	
 	parameters.push_back(Defects);
-	cout << endl;
+	//cout << "Defects " << Defects * 100 << "%" << endl;
 
 
-	
+	flag[p] = false;
+	if (scan.at<float>(cross[0]) < threshold) flag[p] = true;
 
+	crosses.push_back(cross);
+
+	//cout << endl;
 	return parameters;
 }
 
@@ -791,8 +831,8 @@ float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <in
 	else bars.push_back(temp_min);
 
 
-	cout << "spaces size " << spaces.size() << endl;
-	cout << "bars size " << bars.size() << endl;
+	//cout << "spaces size " << spaces.size() << endl;
+	//cout << "bars size " << bars.size() << endl;
 
 	vector <int> ec;
 	int dim, diff, diff2;
@@ -927,7 +967,6 @@ float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<i
 }
 
 
-
 int minimum_grade(vector <float> param) {
 	vector<int> result;
 	
@@ -981,7 +1020,7 @@ string overall_grade(vector <int> grade) {
 		sum = sum + grade[i];
 	}
 	float mean_grade = sum / 10;
-	cout << "mean grade " << mean_grade << endl;
+	//cout << "mean grade " << mean_grade << endl;
 
 
 	//SYMBOL AVERAGE
@@ -993,4 +1032,44 @@ string overall_grade(vector <int> grade) {
 	else symbol_grade = "F";
 
 	return symbol_grade;
+}
+
+
+
+vector < vector <float>> sequence_spaces_bars(vector< vector <int> > crosses, int X, vector <bool> flag) {
+
+
+	vector < vector <float> > sizes;
+	vector <float> temp;
+
+	for (int i = 0; i < crosses.size(); i++) {
+		if (flag[i]) {
+			for (int j = 1; j < crosses[i].size(); j++) {
+				int size = crosses[i][j] - crosses[i][j - 1];
+				temp.push_back(size);
+			}
+		}
+		else {
+			for (int j = 2; j < crosses[i].size()-1; j++) {
+				int size = crosses[i][j] - crosses[i][j - 1];
+				temp.push_back(size);
+			}
+		}
+		sizes.push_back(temp);
+		temp.clear();
+	}
+
+
+	return sizes;
+}
+
+vector <int> number_edges(vector < vector <int> > crosses) {
+
+	vector <int> edges;
+
+	for (int i = 0; i < crosses.size(); i++) {
+		edges.push_back(crosses[i].size());
+	}
+
+	return edges;
 }
