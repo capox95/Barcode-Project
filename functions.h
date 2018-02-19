@@ -12,6 +12,25 @@ using namespace cv;
 using namespace std;
 
 
+struct barcode_result {
+	string name;
+	string grade;
+	vector < vector <float>> parameters;
+	int x_dimension;
+	int height;
+	float orientation;
+	vector <Point> bounding_box;
+	Point center;
+	vector <int> number_edges;
+	vector < vector <float>> sequence;
+};
+
+
+
+
+
+
+
 void drawing_box(Mat dst, vector<Point> points);
 Mat rotation_image(Mat src, float angle_rotation);
 tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag);
@@ -25,15 +44,21 @@ void plot_histogram(Mat Hist, int histSize);
 vector<int> Harris(Mat src, vector<Point> roi);
 
 
-float edges_counter(Mat src);
-vector <float> scan_parameters(Mat scan);
-Mat scan_images_average(Mat src, vector<Point> harris_points, vector <int>& grade);
+
+vector <float> scan_parameters(Mat scan, vector < vector <int> >& crosses, vector<bool>& flag, int p);
+vector <vector <float>> scan_images_average(Mat src, vector<Point> harris_points, vector <int>& grade, vector< vector <int> >& crosses, vector<bool>& flag);
 
 vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hough);
-int writeFile(string line);
+
+int writeFile(struct barcode_result barcode);
+
+
 float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <int>& spaces, vector <int>& bars);
 float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<int> spaces, vector<int> bars, vector<int>& defects_space, vector<int>& defects_bar);
 int minimum_grade(vector <float> param);
 string overall_grade(vector <int> grade);
+vector < vector <float>> sequence_spaces_bars(vector< vector <int> > crosses, int X, vector<bool> flag);
+vector <int> number_edges(vector < vector <int> > crosses);
+
 #endif
 #pragma once
