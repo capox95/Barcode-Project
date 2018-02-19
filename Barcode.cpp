@@ -16,12 +16,15 @@ using namespace cv;
 using namespace std;
 
 
-//gap verticale da rivedere
-//EAN128 - MASTER IMGB
+
+
+barcode_result barcode;
+
 
 
 int main(int argc, char** argv)
 {
+
 
 	string line;
 	ifstream myfile("data/data.txt");
@@ -33,7 +36,7 @@ int main(int argc, char** argv)
 
 
 
-			line = "UPC#01" ;
+			//line = "C39_4.4LOW" ;
 			Mat src = imread("data/" + line + ".bmp", 1);
 			Mat scan_image = src.clone();
 			cout << endl;
@@ -64,6 +67,8 @@ int main(int argc, char** argv)
 			float angle_rotation;
 			bool flag_gauss;
 			tie(r_lines, angle_rotation) = barcode_orientation(dst, &flag_gauss);
+
+			barcode.orientation = angle_rotation;
 			//cout << "angle rotation" << angle_rotation << endl;
 
 
@@ -108,7 +113,7 @@ int main(int argc, char** argv)
 
 			//EXTRACTION THICKNESS SMALLEST BAR, BOUNDING BOX UPDATED!
 			int X = counter_thickness_bars(binary, px);
-			cout << "Size Smaller Bar X: " << X << endl;
+			//cout << "Size Smaller Bar X: " << X << endl;
 
 
 			// BOUNDING BOX DRAWING
@@ -123,7 +128,7 @@ int main(int argc, char** argv)
 			drawing_box(binary, points);
 			cvtColor(binary, binary, CV_GRAY2RGB);
 			drawing_box(binary, points_updated);
-			imshow("binarized image with bounding box", binary);
+			//imshow("binarized image with bounding box", binary);
 
 
 			//HARRIS vector<Point> Harris(Mat src, vector<Point> roi);
@@ -133,27 +138,59 @@ int main(int argc, char** argv)
 
 			cvtColor(rotated_barcode, rotated_barcode, CV_GRAY2RGB);
 			vector <Point> harris_points = { Point(x_bb[0] - 10 * X, y_coord[0] - X), Point(x_bb[0] - 10 * X, y_coord[1] + X), Point(x_bb[1] + 10 * X, y_coord[1] + X), Point(x_bb[1] + 10 * X, y_coord[0] - X) };
+			//vector <Point> harris_points = { Point(x_bb[0] -5* X, y_coord[0] - X), Point(x_bb[0] -5* X, y_coord[1] + X), Point(x_bb[1] + 5*X, y_coord[1] + X), Point(x_bb[1] + 5*X, y_coord[0] - X) };
 			drawing_box(rotated_barcode, harris_points);
+			int height = y_coord[1] - y_coord[0];
+			Point center;
+			center.x = (x_bb[1] - x_bb[0]) / 2 + x_bb[0];
+			center.y = (height / 2) + y_coord[0];
 
 
 
-
-			vector <int> grade;
-			Mat parameters = scan_images_average(scan_image, harris_points, grade);
-			string barcode_grade = overall_grade(grade);
+			vector <int> grade, counter_edges;
+			vector< vector <int> > crosses;
+			vector< vector <float> > parameters;
+			vector <bool> flag_black;
 
 			for (int i = 0; i < 10; i++) {
-				for (int j = 0; j < 6; j++) {
-					cout << parameters.at<float>(i, j) << endl;
-				}
-				cout << endl;
+				flag_black.push_back(0);
 			}
-			cout << "Barcode Grade " << barcode_grade << endl;
 
-			writeFile(barcode_grade);
+
+			parameters = scan_images_average(scan_image, harris_points, grade, crosses, flag_black);
+			string barcode_grade = overall_grade(grade);
+			vector < vector <float> > sequences = sequence_spaces_bars(crosses, X, flag_black);
+
+			counter_edges = number_edges(crosses);
+
+
+			
+			//cout << "Barcode Grade " << barcode_grade << endl;
+
+
+			for (int i = 0; i < parameters.size(); i++) {
+				for (int j = 0; j < parameters[i].size(); j++) {
+					//cout << parameters[i][j] << endl;
+				}
+				//cout << "__________" << endl;
+			}
+
+
+			barcode.name = line;
+			barcode.grade = barcode_grade;
+			barcode.parameters = parameters;
+			barcode.x_dimension = X;
+			barcode.height = height;
+			barcode.center = center;
+			barcode.bounding_box = harris_points;
+			barcode.number_edges = counter_edges;
+			barcode.sequence = sequences;
+
+
+			writeFile(barcode);
 			//imshow("scan image", scan_image);
 
-			cout << "Image: " << line << endl;
+			//cout << "Image: " << line << endl;
 			resize(rotated_barcode, rotated_barcode, Size(rotated_barcode.cols / 1.5, rotated_barcode.rows / 1.5));
 			namedWindow("BOUNDING BOX FINAL", CV_WINDOW_AUTOSIZE);
 			imshow("BOUNDING BOX FINAL", rotated_barcode);
