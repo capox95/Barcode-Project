@@ -55,13 +55,11 @@ int writeFile(struct barcode_result barcode)
 	}
 	myfile << endl;
 	myfile << endl;
-	myfile << endl;git
+	myfile << endl;
 
 
 	return 0;
 }
-
-
 
 void drawing_box(Mat dst, vector<Point> points) {
 
@@ -71,6 +69,8 @@ void drawing_box(Mat dst, vector<Point> points) {
 	line(dst, points[3], points[0], Scalar(7, 254, 47), 3, CV_AA);
 }
 
+
+//ROTATION OF THE IMAGE
 Mat rotation_image(Mat src, float angle_rotation) {
 
 	angle_rotation = ((angle_rotation * 180) / (CV_PI));
@@ -82,9 +82,7 @@ Mat rotation_image(Mat src, float angle_rotation) {
 }
 
 
-
-
-// HOUGH LINES
+// HOUGH LINES: output vector lines + angle of rotation
 tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 	Mat cdst = src.clone();
 	cvtColor(cdst, cdst, CV_GRAY2RGB);
@@ -95,7 +93,6 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 	vector<Vec4i> r_lines;
 	vector<float> theta, theta_backup, theta_r;
 	int minLenght = min((src.rows / 10), (src.cols / 10));
-	//cout << "minimum lenght " << minLenght << endl;
 	HoughLinesP(src, lines, 1, CV_PI / 180, 30, minLenght, 5);
 
 
@@ -104,76 +101,66 @@ tuple <vector<Vec4i>, float> barcode_orientation(Mat src, bool *flag) {
 		Vec4i l = lines[i];
 		theta.push_back(abs(atan2((l[3] - l[1]), (l[2] - l[0]))));
 		//if (valore = (atan2((l[3] - l[1]), (l[2] - l[0]))) > 0) counter++;
-		//line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
+		line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 255, 0), 1, CV_AA);
 
 	}
 
-
-
+	
 	theta_backup = theta;
 
-	// calcolo mediana
+	// MEDIAN
 	sort(theta.begin(), theta.end());
 	median = theta[theta.size() / 2];
-	//cout << "mediana " << median << endl;
+	//cout << "MEDIAN " << median << endl;
 
 
 
-	//ciclo dopo aver calcolato la mediana per selezionare le righe giuste
+	//LOOP AFTER THE CALCULATION OF THE MEDIAN TO SELECT THE CORRECT LINES
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		Vec4i l = lines[i];
 		if ((theta_backup[i] < median + delta) && (theta_backup[i] > (median - delta)))
 		{
-			//cout << theta_backup[i] << endl;
 			r_lines.push_back(Vec4i(l[0], l[1], l[2], l[3]));
-			sum = sum + theta_backup[i];
+			sum = sum + theta_backup[i]; //Sum to obtain the mean value
 			line(cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255, 0, 0), 1, CV_AA);
 		}
 	}
 
 
+	//LOOP TO INCREMENT THE TWO COUNTERS NEEDED FOR THE IDENTIFICATION OF THE SENSE OF THE ROTATION (DO NOT CONSIDER THE LINES ALMOST VERTICAL)
 	for (size_t i = 0; i < r_lines.size(); i++)
 	{
 		Vec4i l = r_lines[i];
 		theta_r.push_back(atan2((l[3] - l[1]), (l[2] - l[0])));
 		if ((theta_r[i] >= 0) && !(theta_r[i] <= 1.5710 && theta_r[i] >= 1.5706)) counter++;
 		if ((theta_r[i] < 0) && !(theta_r[i] >= -1.5710 && theta_r[i] <= -1.5706)) counter2++;
-		//cout << theta_r[i] << endl;
 
 	}
 
-
-	// verso rotazione
-	//cout << "counter positivi " << counter << endl;
-	//cout << "counter negativi " << counter2 << endl;
-
+	//CLOCKWISE / COUNTERCLOCKWISE ROTATION
 	differenza = counter - counter2;
-	if (differenza > range2) orientation = -1; // senso orario
-	else if (differenza < -range2) orientation = 1; // più negativi che positivi
+	if (differenza > range2) orientation = -1; // CLOCKWISE
+	else if (differenza < -range2) orientation = 1; // COUNTER-CLOCKWISE
 	else if ((-range2 <= differenza) && (differenza <= range2)) orientation = 0;
-	//cout << "verso di rotazione:  " << orientation << endl;
 
 
+	//MEAN
 	media = sum / r_lines.size();
-	//cout << "media theta " << media << endl;
 	angle_rotation = (CV_PI / 2 - abs(media))*(orientation);
 
 
+	//FLAG TO ADDRESS THE PROBLEM WITH THE SECOND APPLICATION OF THIS FUNCTION WITH OR WITHOUT THE GAUSSIANBLUR
 	*flag = false;
 	if ((media < CV_PI / 2 - 0.01) || (media > CV_PI / 2 + 0.01)) *flag = true;
 
-	//imshow("cdst", cdst);
-
-
+	//imshow("HOUGH LINES DETECTED", cdst);
 	return make_tuple(r_lines, angle_rotation);
 
 }
 
 
-
-
-// GAP VERTICALE, ORIZZONTALE, ELIMINAZIONE RIGHE SPEZZATE
+//HORIZONTAL, VERTICAL GAPS AND REMOVAL OF THE BROKEN LINES.
 vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
 
 	// bubble sort
@@ -207,7 +194,6 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
 			}
 		}
 	}
-	//cout << " numero di gap:  " << k << endl;
 
 
 	switch (k)
@@ -222,12 +208,12 @@ vector <Vec4i> gap(vector<Vec4i> r_lines, int max_gap) {
 	case (1): {
 
 		if (r_lines.size() - result[0] > result[0])
-		{ //gap sinistra
+		{ //gap LEFT
 			for (int i = result[0] + 1; i < (r_lines.size() - result[0]); i++) {
 				barcode_lines.push_back(r_lines[i]);
 			}
 		}
-		else { //gap destra
+		else { //gap RIGHT
 			for (int i = 0; i <= result[0]; i++) {
 				barcode_lines.push_back(r_lines[i]);
 			}
@@ -250,7 +236,6 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src) {
 	const int offset = 10;
 
 	vector<Vec4i> barcode_lines;
-	//distribuzione tipo "istogramma" del barcode verticalmente
 	vector <int> hist;
 	for (int i = 0; i < src.rows; i++) {
 		hist.push_back(0);
@@ -267,7 +252,7 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src) {
 	int middle = src.rows / 2;
 	int i_min, i_max;
 	bool found = false;
-	//parte superiore
+	//TOP 
 	for (int i = middle; i > 0; i--) {
 		if (hist[i] == 0 && found == false) {
 			i_min = i;
@@ -276,7 +261,7 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src) {
 	}
 
 	found = false;
-	//parte inferire
+	//BOTTOM
 	for (int i = middle; i < size; i++) {
 		if (hist[i] == 0 && found == false) {
 			i_max = i;
@@ -284,7 +269,7 @@ vector <Vec4i> vertical_gap(vector<Vec4i> r2_lines, Mat src) {
 		}
 	}
 
-	//selezione delle hough lines buone dentro barcode_lines
+	//SELECTION OF THE GOOD HOUGH LINES
 	for (int i = 0; i < r2_lines.size(); i++) {
 		if ((r2_lines[i][1] > i_min - offset) && (r2_lines[i][3] < i_max + offset)) {
 			barcode_lines.push_back(r2_lines[i]);
@@ -300,13 +285,12 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 	int h = roi[1].y - roi[3].y; // rows - height
 	int x = roi[2].x - roi[0].x; // columns - width
 
-								 //ROI E CROP DELL'IMMAGINE
+	//ROI E CROP DELL'IMMAGINE
 	Rect myroi(corner.x, corner.y, x, h);
 	Mat crop_image = src(myroi);
-	//cvtColor(crop_image, crop_image, CV_RGB2GRAY);
 
 
-	//CREAZIONE DI DUE MAT RIGA
+	//CREATION OF TWO ROW MAT AND THEN FILLING
 	int line_top = crop_image.rows / 3;
 	int line_bottom = 2 * crop_image.rows / 3;
 	Mat scan_top = Mat::zeros(1, crop_image.cols, CV_8U);
@@ -316,7 +300,8 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 		scan_bottom.at<uchar>(i) = crop_image.at<uchar>(line_bottom, i);
 	}
 
-	//DENTRO INDEX AGGIUNGO SOLO LE COLONNE CON BARRE INTERE SU TUTTA LA LUNGHEZZA CROP
+
+	//INDEX VECTOR WILL CONTAIN ONLY THE COLUMNS HAVING A (DARK) BAR OVER THE WHOLE LENGTH
 	vector <int> index;
 	for (int i = 0; i < scan_top.cols - 2; i++) {
 		int vt = scan_top.at<uchar>(i);
@@ -329,18 +314,16 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 		}
 	}
 
-	//VETTORE CONTENENTE I VALORI XMAX E XMIN GIà CORRETTI PER QUANTO RIGUARDA IL CROP DELL'IMMAGINE
+
+	// X VECTOR WILL CONTAIN THE VALUE XMIN AND XMAX ALREADY TRANSFORMED ACCORDING THE CROPPING OF THE ORIGINAL IMAGE
 	vector <int> X;
 	X.push_back(index[0] + corner.x);
 	X.push_back(index[index.size() - 1] + corner.x);
 	bool flag0 = false, flag1 = false;
 	int t = 0, s = 0;
 
-	//cout << "X min " << X[0] << endl;
-	//cout << "X max " << X[1] << endl;
 
-
-	//DOUBLE CHECK CON LE HOUGH LINES PER SCEGLIERE LA PRIMA E ULTIMA BARRA DEL BARCODE (aggiunge robustezza nel caso di noise (UPC#07))
+	//DOUBLE CHECK WITH THE HOUGH LINES IN ORDER TO SELECT THE CORRECT FIRST AND LAST BAR (MORE ROBUST WITH RESPECT TO NOISE, IMAGE UPC#07)
 	for (int i = 0; i < hough.size(); i++) {
 		if (abs(hough[i][0] - X[0]) <= 2) flag0 = true;
 		if (abs(hough[i][0] - X[1]) <= 2) flag1 = true;
@@ -361,11 +344,11 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 		}
 		t++;
 		s++;
-		//cout << "X min updated " << X[0] << endl;
-		//cout << "X max updated " << X[1] << endl;
+
 	}
 
-	//DISEGNO SOLO PER DEBUGGING
+	//ONLY FOR DEBUGGING 
+	/*
 	cvtColor(crop_image, crop_image, CV_GRAY2RGB);
 	for (int i = 0; i < index.size(); i++) {
 		circle(crop_image, Point(index[i], crop_image.rows / 2), 1, Scalar(0, 255, 0), 2, 1, 0);
@@ -373,10 +356,12 @@ vector <int> broken_lines_removal(Mat src, vector<Point> roi, vector <Vec4i> hou
 	line(crop_image, Point(X[0] - corner.x, 0), Point(X[0] - corner.x, h), Scalar(0, 0, 255), 5, CV_AA);
 	line(crop_image, Point(X[1] - corner.x, 0), Point(X[1] - corner.x, h), Scalar(0, 0, 255), 5, CV_AA);
 	//imshow("crop image broken lines removal", crop_image);
-
+	*/
 	return X;
 }
 
+
+//OUTPUT THE FIRST AND LAST HOUGH LINES IN ORDER TO DRAW A FIRST APPROXIMATED BOUNDING BOX
 vector<float> FirstLastDetector(vector<Vec4i> r_lines) {
 
 	float corners_x[2] = { 100000, 0 }; //primo valore minimo secondo valore massimo
@@ -414,8 +399,6 @@ vector<float> FirstLastDetector(vector<Vec4i> r_lines) {
 }
 
 
-
-
 // COUNTER THICKNESS BARS
 int counter_thickness_bars(Mat img, vector<float> px) {
 
@@ -444,7 +427,6 @@ int counter_thickness_bars(Mat img, vector<float> px) {
 
 	return result;
 }
-
 
 
 
@@ -525,7 +507,6 @@ void plot_histogram(Mat Hist, int histSize) {
 
 
 
-
 //HARRIS CORNER DETECTOR
 vector<int> Harris(Mat src, vector<Point> roi) {
 
@@ -534,7 +515,7 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	int x = roi[2].x - roi[0].x; // columns - width
 
 
-								 //ROI E CROP DELL'IMMAGINE
+	//ROI AND CROP OF THE IMAGE
 	Rect myroi(corner.x, corner.y, x, h);
 	Mat crop_image = src(myroi);
 	Mat crop_bk = crop_image.clone();
@@ -544,7 +525,8 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	convertScaleAbs(dst_norm, dst_norm_scaled);
 
 
-	//RIEMPIO VECTOR CORNERS IN BASE AD UNA THRESHOLD
+
+	//FILLING OF THE VECTOR CORNERS ACCORDING TO A THRESHOLD
 	vector<Point> corners;
 	for (int j = 0; j < dst_norm.rows; j++)
 	{
@@ -559,11 +541,11 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	}
 
 
-	//imshow("crop", dst_norm_scaled);
 	vector<Point> top, bottom, middle;
 	cvtColor(crop_bk, crop_bk, CV_GRAY2RGB);
 
-	//HARRIS CORNERS DIVISI TRA BOTTOM E TOP CERCANDO IN UNA FASCIA DI PIXELS UGUALE AD 1/5 DEL NUMERO TOTALE DI RIGHE
+
+	//HARRIS CORNERS SPLIT BETWEEN TOP AND BOTTOM ACCORDING TO A WINDOWS OF ROWS OF 1/5 OF THE TOTAL NUMBER OF ROWS
 	for (int i = 0; i < corners.size(); i++) {
 		if (corners[i].y < crop_bk.rows / 5) {
 			top.push_back(corners[i]);
@@ -571,19 +553,16 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 		}
 		else if (corners[i].y > 4 * crop_bk.rows / 5) {
 			bottom.push_back(corners[i]);
-			circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
+			//circle(crop_bk, Point(corners[i]), 2, Scalar(0, 255, 0), 1);
 		}
 		else {
 			middle.push_back(corners[i]);
-			circle(crop_bk, Point(corners[i]), 2, Scalar(255, 0, 0), 1);
+			//circle(crop_bk, Point(corners[i]), 2, Scalar(255, 0, 0), 1);
 		}
 	}
 
 
-
-
-
-	//CORRISPONDENZE TRA TOP E BOTTOM
+	//CORRESPONDENCES BETWEEN TOP AND BOTTOM
 	vector<Point> result_top, result_bot;
 	for (int i = 0; i < top.size(); i++) {
 		for (int j = 0; j < bottom.size(); j++) {
@@ -597,7 +576,7 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	}
 
 
-	// ALTEZZA MINIMA BARCODE
+	//MINIMUM HEIGHT BARCODE
 	int min = crop_image.rows;
 	int riga = 0;
 	for (int i = 0; i < result_top.size(); i++) {
@@ -608,11 +587,11 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 		}
 	}
 
-	//DISPLAY DELLA LINEA DOVE E' STATA CALCOLATA L'ALEZZA MINIMA
+	//MINIMUM HEIGHT LINE
 	line(crop_bk, result_top[riga], result_bot[riga], Scalar(0, 255, 0), 3, CV_AA);
 
 
-	//CALCOLO VALORI Y (MIN E MAX) DA USARE PER IL BOUNDING BOX
+	//YMIN AND YMAX FOR THE BOUNDING BOX DRAWING
 	int bot_y_min = crop_image.rows;
 	int top_y_min = 0;
 	for (int i = 0; i < result_bot.size(); i++) {
@@ -621,16 +600,15 @@ vector<int> Harris(Mat src, vector<Point> roi) {
 	}
 
 
-	//TRASLAZIONE PER MUOVERSI DAL CROP ALL'IMMAGINE ORIGINALE
+
+	//TRANSFORMATION FROM THE CROPPED REFERENCE FRAME TO THE ORIGINAL IMAGE REFERENCE FRAME
 	vector<int> result;
 	result.push_back(top_y_min + corner.y);
 	result.push_back(bot_y_min + corner.y);
-	//imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
-
+	imshow("HARRIS CORNERS AND MINIMUM HEIGHT", crop_bk);
 
 	return result;
 }
-
 
 
 //PARAMETERS CALCULATION (REFLECTANCE, CONTRAST, MODULATION, DEFECTS)
@@ -676,23 +654,15 @@ vector <vector <float>> scan_images_average(Mat src, vector<Point> harris_points
 		grade.push_back(minimum_grade(parameters[i]));
 	}
 
-	/*
-	// CODICE DI TEST SU UNA SOLA SCAN PROFILE LINE
-	int hist_w = scan[9].cols; int hist_h = 255;
-	int bin_w = cvRound((double)hist_w / scan[9].cols);
-	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
-	for (int i = 1; i < scan_profiles.cols; i++)
-	{
-		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(scan[9].at<float>(i - 1))), Point(bin_w*(i), hist_h - cvRound(scan[9].at<float>(i))), Scalar(255, 0, 0), 1, 1, 0);
-	}
 
-	imshow("Threshold = RED, Rmax = BLUE, Rmin = GREEN", histImage);
-	*/
+
+	
 
 	return parameters;
 }
 
 
+//COMPUTATION OF THE QUALITY PARAMETERS FOR EACH SCAN REFLECTANCE PROFILE
 vector <float> scan_parameters(Mat scan, vector < vector <int> >& crosses,vector <bool>& flag, int p) {
 
 	vector <float> parameters;
@@ -731,6 +701,7 @@ vector <float> scan_parameters(Mat scan, vector < vector <int> >& crosses,vector
 	//cout << "Threshold: " << threshold << endl;
 
 
+	// CROSS CONTAINS X COORDINATES OF TRANSITION PIXELS ACCORDING TO THE GLOBAL THRESHOLD LINE
 	for (int i = 1; i < scan.cols; i++) {
 		float temp = scan.at<float>(i);
 		float temp0 = scan.at<float>(i - 1);
@@ -773,28 +744,45 @@ vector <float> scan_parameters(Mat scan, vector < vector <int> >& crosses,vector
 	//cout << "Defects " << Defects * 100 << "%" << endl;
 
 
+	//FLAG USED TO ADDRESS THE CASE IN WHICH SOME SCAN REFLECTANCE PROFILES STARTS WITH A SPACE AND OTHERS WITH A BAR (ON THE SAME BARCODE, example UPC#01)
 	flag[p] = false;
 	if (scan.at<float>(cross[0]) < threshold) flag[p] = true;
 
 	crosses.push_back(cross);
 
 	//cout << endl;
+
+	/*
+	// CODICE DI TEST SU UNA SOLA SCAN PROFILE LINE
+	int hist_w = scan.cols; int hist_h = 255;
+	int bin_w = cvRound((double)hist_w / scan.cols);
+	Mat histImage(hist_h, hist_w, CV_8UC1, Scalar(0, 0, 0));
+	for (int i = 1; i < scan.cols; i++)
+	{
+		line(histImage, Point(bin_w*(i - 1), hist_h - cvRound(scan.at<float>(i - 1))), Point(bin_w*(i), hist_h - cvRound(scan.at<float>(i))), Scalar(255, 0, 0), 1, 1, 0);
+	}
+
+	imshow("Threshold = RED, Rmax = BLUE, Rmin = GREEN", histImage);
+	*/
+
 	return parameters;
 }
 
 
+//ECMIN COMPUTATION
 float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <int>& spaces, vector <int>& bars) {
-	//CONTROLLO SE TUTTO A SINISTRA DEL BOUNDINGBOX SONO IN UNO SPAZIO O BARRA
+	
+	//CHECKING IF THE BEGINNING OF THE BOUNDING BOX IS A SPACE OR A BAR
 	bool check;
-	if (scan.at<float>(cross[0] / 2) <= threshold) check = true; //barra
-	else check = false; // spazio
+	if (scan.at<float>(cross[0] / 2) <= threshold) check = true; //BAR
+	else check = false; // SPACE
 	
 
 	int temp_max = 0, temp_min = 255;
 	for (int i = 0; i < cross[0]; i++) {
 		int temp = scan.at<float>(i);
-		if (temp > temp_max && !check) temp_max = temp; //spazio
-		if (temp < temp_min && check) temp_min = temp; //barra
+		if (temp > temp_max && !check) temp_max = temp; //BAR
+		if (temp < temp_min && check) temp_min = temp; //SPACE
 	}
 	if (!check) spaces.push_back(temp_max);
 	else bars.push_back(temp_min);
@@ -807,10 +795,10 @@ float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <in
 		for (int i = cross[k]; i < cross[k + 1]; i++) {
 			int temp = scan.at<float>(i);
 			if (check) {
-				if (temp < temp_min) temp_min = temp; // barra
+				if (temp < temp_min) temp_min = temp; // BAR
 			}
 			else {
-				if (temp > temp_max) temp_max = temp; // spazio
+				if (temp > temp_max) temp_max = temp; // SPACE
 			}
 		}
 		if (check) bars.push_back(temp_min);
@@ -824,15 +812,13 @@ float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <in
 	temp_min = 255;
 	for (int i = cross[cross.size() - 1]; i < scan.cols; i++) {
 		int temp = scan.at<float>(i);
-		if (temp > temp_max && !check) temp_max = temp; //spazio
-		if (temp < temp_min && check) temp_min = temp; //barra
+		if (temp > temp_max && !check) temp_max = temp; //SPACE
+		if (temp < temp_min && check) temp_min = temp; //BAR
 	}
 	if (!check) spaces.push_back(temp_max);
 	else bars.push_back(temp_min);
 
 
-	//cout << "spaces size " << spaces.size() << endl;
-	//cout << "bars size " << bars.size() << endl;
 
 	vector <int> ec;
 	int dim, diff, diff2;
@@ -874,14 +860,15 @@ float ecmin_calculation(vector<int> cross, Mat scan, float threshold, vector <in
 }
 
 
+//ERNMAX COMPUTATION
 float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<int> spaces, vector<int> bars, vector<int>& defects_space, vector<int>& defects_bar) {
-	//CONTROLLO SE TUTTO A SINISTRA DEL BOUNDINGBOX SONO IN UNO SPAZIO O BARRA
+	//CHECKING IF THE BEGINNING OF THE BOUNDING BOX IS A SPACE OR A BAR
 	bool check;
-	if (scan.at<float>(cross[0] / 2) <= threshold) check = true; //barra
-	else check = false; // spazio
+	if (scan.at<float>(cross[0] / 2) <= threshold) check = true; //BAR
+	else check = false; // SPACE
 	
 
-	// cerchiamo un picco di minimo nel massimo
+	// FIRST INTERVAL
 	int t_space = 255, t_bar = 0;
 	for (int j = 1; j < cross[0] - 1; j++) {
 		if (!check) {
@@ -900,17 +887,17 @@ float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<i
 	else defects_bar.push_back(t_bar);
 	check = !check;
 	
-	//intervalli successivi
+	//INTERVALS IN BETWEEN TWO CROSSES
 	for (int i = 0; i < cross.size() - 1; i++) {
 		t_bar = 0;
 		t_space = 255;
 		for (int j = cross[i]; j < cross[i + 1]; j++) {
-			if (check) { // cerchiamo un massimo nel minimo
+			if (check) { 
 				if ((scan.at<float>(j) >= scan.at<float>(j - 1)) && (scan.at<float>(j) >= scan.at<float>(j + 1)) && (scan.at<float>(j) >= t_bar)) {
 					t_bar = scan.at<float>(j);
 				}
 			}
-			else { //cerchiamo un minimo nel massimo
+			else { 
 				if ((scan.at<float>(j) <= scan.at<float>(j - 1)) && (scan.at<float>(j) <= scan.at<float>(j + 1)) && (scan.at<float>(j) <= t_space)) {
 					t_space = scan.at<float>(j);
 				}
@@ -921,7 +908,7 @@ float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<i
 		check = !check;
 	}
 
-	// ultimo intervallo
+	// LAST INTERVAL
 	t_space = 255;
 	t_bar = 0;
 	for (int j = cross[cross.size()-1]+1; j < scan.cols-1; j++) {
@@ -942,14 +929,13 @@ float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<i
 
 
 
-
-	float ERNmax = 0, ERNmax_index;
+	// LOOKING FOR THE MAXIMUM
+	float ERNmax = 0;
 	for (int i = 0; i < defects_space.size() - 1; i++) {
 		if (defects_space[i] != 255) {
 			int value = spaces[i] - defects_space[i];
 			if (value > ERNmax) {
 				ERNmax = value;
-				ERNmax_index = i;
 			}
 		}
 	}
@@ -958,7 +944,6 @@ float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<i
 			int value = defects_bar[i] - bars[i];
 			if (value > ERNmax) {
 				ERNmax = value;
-				ERNmax_index = i;
 			}
 		}
 	}
@@ -967,6 +952,7 @@ float ernmax_calculation(Mat scan, vector <int> cross, float threshold, vector<i
 }
 
 
+//GRADE ASSIGNMENT
 int minimum_grade(vector <float> param) {
 	vector<int> result;
 	
@@ -1003,15 +989,12 @@ int minimum_grade(vector <float> param) {
 	int temp = result[0];
 	for (int i = 0; i < result.size(); i++) {
 		if (temp >= result[i]) temp = result[i];
-		//cout << result[i] << endl;
 	}
 
 	result.push_back(temp);
-	//cout << temp << endl;
 
 	return temp;
 }
-
 
 string overall_grade(vector <int> grade) {
 
@@ -1020,7 +1003,6 @@ string overall_grade(vector <int> grade) {
 		sum = sum + grade[i];
 	}
 	float mean_grade = sum / 10;
-	//cout << "mean grade " << mean_grade << endl;
 
 
 	//SYMBOL AVERAGE
@@ -1035,7 +1017,7 @@ string overall_grade(vector <int> grade) {
 }
 
 
-
+//MULTIDIMENTIONAL VECTOR CONTAINING THE SEQUENCE OF SPACES/BARS FOR EACH SCAN REFLECTANCE PROFILE
 vector < vector <float>> sequence_spaces_bars(vector< vector <int> > crosses, int X, vector <bool> flag) {
 
 
@@ -1046,7 +1028,7 @@ vector < vector <float>> sequence_spaces_bars(vector< vector <int> > crosses, in
 		if (flag[i]) {
 			for (int j = 1; j < crosses[i].size(); j++) {
 				int size = crosses[i][j] - crosses[i][j - 1];
-				temp.push_back(size);
+				temp.push_back(size/X);
 			}
 		}
 		else {
@@ -1063,6 +1045,8 @@ vector < vector <float>> sequence_spaces_bars(vector< vector <int> > crosses, in
 	return sizes;
 }
 
+
+//COUNTER OF THE NUMBER OF EDGES
 vector <int> number_edges(vector < vector <int> > crosses) {
 
 	vector <int> edges;
